@@ -27,4 +27,6 @@ note right of PairLabel
   A〜Z の1文字
 end note
 
+Team o-- "*" Pair : pairs
+
 @enduml

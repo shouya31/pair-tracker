@@ -1,5 +1,11 @@
 @startuml DomainOverview
 
+' 表示の一貫性のための設定
+skinparam dpi 300
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam padding 2
+
 !include shared/email.puml
 
 package "Team Aggregate"  <<Aggregate>> {
