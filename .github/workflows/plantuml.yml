@@ -1,21 +1,52 @@
 name: build-uml
 on:
   push:
-    paths: [ 'docs/domain/**/*.puml' ]
+    paths: ['docs/domain/**/*.puml']
+
+permissions:
+  contents: write
+
 jobs:
   render:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install PlantUML + Graphviz
-        run: sudo apt-get update && sudo apt-get install -y plantuml graphviz
+
+      # Java
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # PlantUML JAR
+      - name: Download PlantUML
+        run: curl -sL https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar -o plantuml.jar
+
+      # Graphviz
+      - name: Install Graphviz
+        run: sudo apt-get update && sudo apt-get install -y graphviz
+
+      # Render (verbose + failfast2)
       - name: Generate SVG
         run: |
-          plantuml -tsvg docs/domain/overview.puml
+          cd docs/domain
+          java -jar ../../plantuml.jar \
+               -verbose -failfast2 -tsvg \
+               -o . overview.puml \
+               -filename overview
+
+      # Check & commit
       - name: Commit SVG
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git add docs/domain/overview.svg
-          git commit -m "chore(svg): update overview diagram" || echo "no change"
-          git push
+          if [[ -f docs/domain/DomainOverview.svg ]]; then
+            git config user.name github-actions
+            git config user.email github-actions@github.com
+            git add docs/domain/DomainOverview.svg
+            git commit -m "chore(svg): update overview diagram" || echo "no change"
+            git push
+          else
+            echo "::error::DomainOverview.svg was not generated"
+            exit 1
+          fi
