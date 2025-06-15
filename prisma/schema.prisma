@@ -1,0 +1,86 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id
+  email     String   @unique
+  status    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdIssues Issue[] @relation("Creator")
+  assignedIssues Issue[] @relation("Assignee")
+  teams         TeamMember[]
+  pairs         PairMember[]
+}
+
+model Team {
+  id        String   @id
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members TeamMember[]
+  pairs   Pair[]
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+}
+
+model Pair {
+  id        String   @id
+  teamId    String
+  label     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team    Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  members PairMember[]
+
+  @@unique([teamId, label])
+}
+
+model PairMember {
+  id        String   @id @default(cuid())
+  pairId    String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pair Pair @relation(fields: [pairId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([pairId, userId])
+}
+
+model Issue {
+  id         String   @id
+  title      String
+  status     String
+  creatorId  String
+  assigneeId String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  creator  User  @relation("Creator", fields: [creatorId], references: [id], onDelete: Cascade)
+  assignee User? @relation("Assignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+} 
