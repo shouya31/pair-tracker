@@ -1,0 +1,30 @@
+@startuml TeamAggregate
+
+class Team {
+  + teamId : UUID
+  + name   : TeamName
+}
+note right of Team
+  メンバーは最低3名
+end note
+
+class Pair {
+  + pairId : UUID
+  + label  : PairLabel
+}
+note right of Pair
+  同Team内 2–3名
+end note
+
+'── Team 集約専用の VO ─────────────────────────
+class TeamName <<ValueObject>>
+note right of TeamName
+  一意・3文字以内
+end note
+
+class PairLabel <<ValueObject>>
+note right of PairLabel
+  A〜Z の1文字
+end note
+
+@enduml

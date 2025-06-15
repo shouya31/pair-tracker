@@ -1,0 +1,24 @@
+@startuml UserAggregate
+
+class User {
+  + userId : UUID
+  + email  : Email
+  + status : UserStatus
+}
+note right of User
+  非在籍中は所属禁止
+end note
+
+'── User 集約専用の VO／Enum ────────────────────
+class Email <<ValueObject>>
+note right of Email
+  RFC準拠
+end note
+
+enum UserStatus <<Enum>> {
+  Enrolled
+  Suspended
+  Withdrawn
+}
+
+@enduml

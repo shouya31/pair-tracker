@@ -1,0 +1,21 @@
+@startuml DomainOverview
+
+'── 各集約をパッケージ単位で読み込む ─────────────
+package "Team Aggregate"  <<Aggregate>> {
+  !include team/aggregate.puml
+}
+package "User Aggregate"  <<Aggregate>> {
+  !include user/aggregate.puml
+}
+package "Issue Aggregate" <<Aggregate>> {
+  !include issue/aggregate.puml
+}
+
+'── 集約間の関連 ───────────────────────────────
+Team "1" -- "3..*" User : "members" >
+Pair "1" -- "2..3" User : "members" >
+Team "1" -- "0..*" Pair : "" >
+Issue "1" --> "1" User : "creator" >
+Issue "1" --> "0..1" User : "assignee" >
+
+@enduml
