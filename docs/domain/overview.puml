@@ -1,5 +1,7 @@
 @startuml DomainOverview
 
+!include shared/email.puml
+
 package "Team Aggregate"  <<Aggregate>> {
   !include team/aggregate.puml
 }

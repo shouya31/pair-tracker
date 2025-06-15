@@ -16,7 +16,7 @@ note right of Pair
   同Team内 2–3名
 end note
 
-'── Team 集約専用の VO ─────────────────────────
+'── Team集約専用のVO ─────────────────────────
 class TeamName <<ValueObject>>
 note right of TeamName
   一意・3文字以内

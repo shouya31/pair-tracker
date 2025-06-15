@@ -1,5 +1,7 @@
 @startuml UserAggregate
 
+!include ../shared/email.puml
+
 class User {
   + userId : UUID
   + email  : Email
@@ -9,12 +11,7 @@ note right of User
   非在籍中は所属禁止
 end note
 
-'── User 集約専用の VO／Enum ────────────────────
-class Email <<ValueObject>>
-note right of Email
-  RFC準拠
-end note
-
+'── User集約専用のEnum ────────────────────
 enum UserStatus <<Enum>> {
   Enrolled
   Suspended

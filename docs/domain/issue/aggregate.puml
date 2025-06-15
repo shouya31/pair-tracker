@@ -8,7 +8,7 @@ note right of Issue
   担当者のみステータス変更可
 end note
 
-'── Issue 集約専用の VO／Enum ───────────────────
+'── Issue集約専用のVO／Enum ───────────────────
 class IssueTitle <<ValueObject>>
 note right of IssueTitle
   1〜20文字以内
