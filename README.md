@@ -1,4 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pair Tracker
+
+ペアプログラミングの追跡を行うためのシステムです。チーム、ペア、ユーザー、課題の管理を行います。
+
+## 機能
+
+- チーム管理（3名以上のメンバーで構成）
+- ペア管理（2-3名のメンバーで構成）
+- ユーザー管理（在籍状況の追跡）
+- 課題管理（作成者、担当者、ステータスの管理）
+
+## 技術スタック
+
+- TypeScript
+- Node.js
+- Jest（テスティング）
+
+## セットアップ
+
+```bash
+# 依存関係のインストール
+npm install
+
+# ビルド
+npm run build
+
+# テストの実行
+npm test
+
+# アプリケーションの起動
+npm start
+```
+
+## ドメインモデル
+
+- Team集約
+  - チーム名は3文字以内
+  - メンバーは最低3名必要
+  - ペアは2-3名で構成
+
+- User集約
+  - ユーザーステータス（在籍中、一時停止、退会）
+  - 非在籍中のユーザーはチームに所属不可
+
+- Issue集約
+  - タイトルは1-20文字
+  - ステータス（未着手、レビュー中、完了）
+  - 担当者のみがステータスを変更可能
 
 ## Getting Started
 
