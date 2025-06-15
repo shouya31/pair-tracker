@@ -1,0 +1,5 @@
+export enum UserStatus {
+  ENROLLED = 'ENROLLED',
+  SUSPENDED = 'SUSPENDED',
+  WITHDRAWN = 'WITHDRAWN'
+} 

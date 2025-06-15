@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  status    String   // "Enrolled" | "Suspended" | "Withdrawn"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  teamMembers TeamMember[]
+  pairMembers PairMember[]
+  createdIssues Issue[] @relation("Creator")
+  assignedIssues Issue[] @relation("Assignee")
+
+  @@map("users")
+}
+
+model Team {
+  id        String   @id @default(uuid())
+  name      String   @unique @db.VarChar(3)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  members TeamMember[]
+  pairs   Pair[]
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id        String   @id @default(uuid())
+  teamId    String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  team Team @relation(fields: [teamId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([teamId, userId])
+  @@map("team_members")
+}
+
+model Pair {
+  id        String   @id @default(uuid())
+  teamId    String
+  label     String   @db.VarChar(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  team    Team         @relation(fields: [teamId], references: [id])
+  members PairMember[]
+
+  @@unique([teamId, label])
+  @@map("pairs")
+}
+
+model PairMember {
+  id        String   @id @default(uuid())
+  pairId    String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  pair Pair @relation(fields: [pairId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([pairId, userId])
+  @@map("pair_members")
+}
+
+model Issue {
+  id         String   @id @default(uuid())
+  title      String   @db.VarChar(20)
+  status     String   // "Unstarted" | "InReview" | "Done"
+  creatorId  String
+  assigneeId String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  creator  User  @relation("Creator", fields: [creatorId], references: [id])
+  assignee User? @relation("Assignee", fields: [assigneeId], references: [id])
+
+  @@map("issues")
+} 
