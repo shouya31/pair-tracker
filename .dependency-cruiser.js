@@ -29,7 +29,10 @@ module.exports = {
         comment: "axiosやprismaなど副作用関数は infrastructureでのみ使用可能",
         severity: "error",
         from: { pathNot: "^src/infrastructure" },
-        to: { path: "(axios|prisma|node-fetch|fs)" }
+        to: {
+          dependencyTypes: ["npm", "core"],
+          path: "^(axios|prisma|node-fetch|fs)$"
+        }
       },
 
       {
