@@ -37,4 +37,4 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## ドメイン概要（集約間の関係）
 
-![Domain Overview](docs/domain/overview.svg)
+![Domain Overview](docs/domain/DomainOverview.svg)
