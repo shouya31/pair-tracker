@@ -33,7 +33,7 @@ jobs:
           java -jar ../../plantuml.jar \
                -verbose -failfast2 -tsvg \
                -o . overview.puml \
-               -filename overview
+               -filename DomainOverview
 
       # Check & commit
       - name: Commit SVG
