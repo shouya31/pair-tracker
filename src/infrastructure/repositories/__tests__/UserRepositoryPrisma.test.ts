@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { UserRepositoryPrisma } from '../UserRepositoryPrisma';
 import { User } from '../../../domain/user/User';
 import { Email } from '../../../domain/shared/Email';
+import { UserStatus } from '../../../domain/user/enums/UserStatus';
 
 describe('UserRepositoryPrisma', () => {
   let prisma: PrismaClient;
@@ -10,7 +11,7 @@ describe('UserRepositoryPrisma', () => {
   beforeEach(async () => {
     prisma = new PrismaClient();
     repository = new UserRepositoryPrisma(prisma);
-    // テストデータのクリーンアップ
+
     await prisma.user.deleteMany();
   });
 
@@ -36,16 +37,24 @@ describe('UserRepositoryPrisma', () => {
       const user = User.create('テストユーザー', 'test@example.com');
       await repository.save(user);
 
-      const updatedUser = User.create('更新後ユーザー', 'updated@example.com');
+      const updatedUser = User.rebuild(
+        user.getUserId(),
+        '更新後ユーザー',
+        'updated@example.com',
+        UserStatus.Enrolled
+      );
       await repository.save(updatedUser);
 
       const savedUser = await prisma.user.findUnique({
-        where: { id: updatedUser.getUserId() },
+        where: { id: user.getUserId() },
       });
 
       expect(savedUser).not.toBeNull();
       expect(savedUser?.name).toBe('更新後ユーザー');
       expect(savedUser?.email).toBe('updated@example.com');
+
+      const totalUsers = await prisma.user.count();
+      expect(totalUsers).toBe(1);
     });
   });
 
