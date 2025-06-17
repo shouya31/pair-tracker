@@ -5,11 +5,7 @@ import { Email } from '../../domain/shared/Email';
 import { UserStatus } from '../../domain/user/enums/UserStatus';
 
 export class UserRepositoryPrisma implements IUserRepository {
-  private prisma: PrismaClient;
-
-  constructor() {
-    this.prisma = new PrismaClient();
-  }
+  constructor(private readonly prisma: PrismaClient) {}
 
   async findByEmail(email: Email): Promise<User | null> {
     const user = await this.prisma.user.findUnique({

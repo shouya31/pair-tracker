@@ -9,7 +9,7 @@ describe('UserRepositoryPrisma', () => {
 
   beforeEach(async () => {
     prisma = new PrismaClient();
-    repository = new UserRepositoryPrisma();
+    repository = new UserRepositoryPrisma(prisma);
     // テストデータのクリーンアップ
     await prisma.user.deleteMany();
   });
