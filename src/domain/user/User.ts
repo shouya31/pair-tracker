@@ -21,7 +21,6 @@ export class User {
       UserStatus.Enrolled, // 初期ステータスは「在籍中」
     );
   }
-  }
 
   public getUserId(): string {
     return this.userId;
