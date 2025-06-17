@@ -8,15 +8,17 @@ describe('UserRepositoryPrisma', () => {
   let prisma: PrismaClient;
   let repository: UserRepositoryPrisma;
 
-  beforeEach(async () => {
+  beforeAll(() => {
     prisma = new PrismaClient();
-    repository = new UserRepositoryPrisma(prisma);
-
-    await prisma.user.deleteMany();
   });
 
-  afterEach(async () => {
+  afterAll(async () => {
     await prisma.$disconnect();
+  });
+
+  beforeEach(async () => {
+    repository = new UserRepositoryPrisma(prisma);
+    await prisma.user.deleteMany();
   });
 
   describe('save', () => {
