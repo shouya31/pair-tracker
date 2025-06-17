@@ -11,12 +11,16 @@ export class User {
   ) {}
 
   public static create(name: string, email: string): User {
+    if (!name.trim()) {
+      throw new Error('名前を入力してください');
+    }
     return new User(
       randomUUID(),
       name,
       Email.create(email),
       UserStatus.Enrolled, // 初期ステータスは「在籍中」
     );
+  }
   }
 
   public getUserId(): string {
