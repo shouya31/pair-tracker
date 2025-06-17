@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { IUserRepository } from '../../domain/user/IUserRepository';
 import { User } from '../../domain/user/User';
 import { Email } from '../../domain/shared/Email';
+import { UserStatus } from '../../domain/user/enums/UserStatus';
 
 export class UserRepositoryPrisma implements IUserRepository {
   private prisma: PrismaClient;
@@ -21,7 +22,12 @@ export class UserRepositoryPrisma implements IUserRepository {
       return null;
     }
 
-    return User.create(user.name, user.email);
+    return User.rebuild(
+      user.id,
+      user.name,
+      user.email,
+      UserStatus.Enrolled
+    );
   }
 
   async save(user: User): Promise<void> {

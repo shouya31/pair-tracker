@@ -52,4 +52,40 @@ describe('User', () => {
       expect(() => User.create(whitespaceOnlyName, email)).toThrow('名前を入力してください');
     });
   });
+
+  describe('rebuild', () => {
+    test('既存のIDを使用してユーザーを再構築できる', () => {
+      const id = '12345678-1234-4321-abcd-1234567890ab';
+      const name = 'テストユーザー';
+      const email = 'test@example.com';
+      const status = UserStatus.Enrolled;
+
+      const user = User.rebuild(id, name, email, status);
+
+      expect(user.getUserId()).toBe(id);
+      expect(user.getName()).toBe(name);
+      expect(user.getEmail()).toBe(email);
+      expect(user.getStatus()).toBe(status);
+    });
+
+    test('無効なメールアドレスで再構築しようとするとエラーになる', () => {
+      const id = '12345678-1234-4321-abcd-1234567890ab';
+      const name = 'テストユーザー';
+      const invalidEmail = 'invalid-email';
+      const status = UserStatus.Enrolled;
+
+      expect(() => User.rebuild(id, name, invalidEmail, status)).toThrow('無効なメールアドレスです');
+    });
+
+    test('異なるステータスでユーザーを再構築できる', () => {
+      const id = '12345678-1234-4321-abcd-1234567890ab';
+      const name = 'テストユーザー';
+      const email = 'test@example.com';
+      const status = UserStatus.Suspended;
+
+      const user = User.rebuild(id, name, email, status);
+
+      expect(user.getStatus()).toBe(UserStatus.Suspended);
+    });
+  });
 });
