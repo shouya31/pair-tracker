@@ -37,5 +37,19 @@ describe('User', () => {
       expect(user.getEmailVO()).toBeInstanceOf(Email);
       expect(user.getEmailVO().getValue()).toBe(email);
     });
+
+    test('空の名前でユーザーを作成しようとするとエラーになる', () => {
+      const emptyName = '';
+      const email = 'test@example.com';
+
+      expect(() => User.create(emptyName, email)).toThrow('名前を入力してください');
+    });
+
+    test('スペースのみの名前でユーザーを作成しようとするとエラーになる', () => {
+      const whitespaceOnlyName = '   ';
+      const email = 'test@example.com';
+
+      expect(() => User.create(whitespaceOnlyName, email)).toThrow('名前を入力してください');
+    });
   });
 });
