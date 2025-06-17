@@ -59,7 +59,7 @@ describe('Email', () => {
     });
 
     test('254文字を超えるメールアドレスは無効', () => {
-      const longLocalPart = 'a'.repeat(200);
+      const longLocalPart = 'a'.repeat(245);   // 245 + 1 (@) + 11 (example.com) = 257 > 254
       const longEmail = `${longLocalPart}@example.com`;
       expect(() => Email.create(longEmail)).toThrow('無効なメールアドレスです');
     });
