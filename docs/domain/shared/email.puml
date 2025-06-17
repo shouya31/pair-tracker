@@ -1,0 +1,6 @@
+@startuml Email
+class Email <<ValueObject>>
+note right of Email
+  RFC準拠
+end note
+@enduml

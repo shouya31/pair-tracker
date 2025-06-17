@@ -1,0 +1,21 @@
+@startuml UserAggregate
+
+!include ../shared/email.puml
+
+class User {
+  + userId : UUID
+  + email  : Email
+  + status : UserStatus
+}
+note right of User
+  非在籍中は所属禁止
+end note
+
+'── User集約専用のEnum ────────────────────
+enum UserStatus <<Enum>> {
+  Enrolled
+  Suspended
+  Withdrawn
+}
+
+@enduml
