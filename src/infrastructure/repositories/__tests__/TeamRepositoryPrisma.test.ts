@@ -19,33 +19,24 @@ describe('TeamRepositoryPrisma', () => {
 
   beforeEach(async () => {
     repository = new TeamRepositoryPrisma(prisma);
-    // テストデータのクリーンアップ
-    await prisma.$executeRaw`TRUNCATE TABLE "TeamUser" CASCADE`;
-    await prisma.$executeRaw`TRUNCATE TABLE "Team" CASCADE`;
-    await prisma.$executeRaw`TRUNCATE TABLE "User" CASCADE`;
+    await prisma.teamUser.deleteMany();
+    await prisma.team.deleteMany();
+    await prisma.user.deleteMany();
   });
 
   describe('save', () => {
     test('新規チームを保存できる', async () => {
       // テスト用のユーザーを作成
-      await Promise.all([
-        prisma.$executeRaw`
-          INSERT INTO "User" (id, name, email, "createdAt", "updatedAt")
-          VALUES ('user-1', 'User 1', 'user1@example.com', NOW(), NOW())
-        `,
-        prisma.$executeRaw`
-          INSERT INTO "User" (id, name, email, "createdAt", "updatedAt")
-          VALUES ('user-2', 'User 2', 'user2@example.com', NOW(), NOW())
-        `,
-        prisma.$executeRaw`
-          INSERT INTO "User" (id, name, email, "createdAt", "updatedAt")
-          VALUES ('user-3', 'User 3', 'user3@example.com', NOW(), NOW())
-        `,
-      ]);
-
-      const userRecords = await prisma.$queryRaw<Array<{ id: string; name: string; email: string }>>`
-        SELECT id, name, email FROM "User" ORDER BY id
-      `;
+      const userPromises = ['user-1', 'user-2', 'user-3'].map(id =>
+        prisma.user.create({
+          data: {
+            id,
+            name: `User ${id.split('-')[1]}`,
+            email: `user${id.split('-')[1]}@example.com`,
+          },
+        })
+      );
+      const userRecords = await Promise.all(userPromises);
 
       const domainUsers = userRecords.map(user =>
         User.rebuild(user.id, user.name, user.email, UserStatus.Enrolled)
@@ -55,75 +46,38 @@ describe('TeamRepositoryPrisma', () => {
       await repository.save(team);
 
       // 保存されたデータを確認
-      const savedTeamData = await prisma.$queryRaw<Array<{
-        id: string;
-        name: string;
-        members: Array<{
-          userId: string;
-          user: {
-            id: string;
-            name: string;
-            email: string;
-          };
-        }>;
-      }>>`
-        SELECT
-          t.id,
-          t.name,
-          COALESCE(
-            json_agg(
-              json_build_object(
-                'userId', tu."userId",
-                'user', json_build_object(
-                  'id', u.id,
-                  'name', u.name,
-                  'email', u.email
-                )
-              )
-            ) FILTER (WHERE u.id IS NOT NULL),
-            '[]'
-          ) as members
-        FROM "Team" t
-        LEFT JOIN "TeamUser" tu ON t.id = tu."teamId"
-        LEFT JOIN "User" u ON tu."userId" = u.id
-        WHERE t.id = ${team.getTeamId()}
-        GROUP BY t.id, t.name
-      `;
+      const savedTeam = await prisma.team.findUnique({
+        where: { id: team.getTeamId() },
+        include: {
+          members: {
+            include: {
+              user: true,
+            },
+          },
+        },
+      });
 
-      const savedTeam = savedTeamData[0];
       expect(savedTeam).not.toBeNull();
-      expect(savedTeam.name).toBe('ABC');
-      expect(savedTeam.members).toHaveLength(3);
+      expect(savedTeam?.name).toBe('ABC');
+      expect(savedTeam?.members).toHaveLength(3);
 
-      const memberIds = savedTeam.members.map(m => m.userId).sort();
+      const memberIds = savedTeam?.members.map(m => m.userId).sort() ?? [];
       const expectedIds = userRecords.map(u => u.id).sort();
       expect(memberIds).toEqual(expectedIds);
     });
 
     test('既存のチームを更新できる', async () => {
       // テスト用のユーザーを作成
-      await Promise.all([
-        prisma.$executeRaw`
-          INSERT INTO "User" (id, name, email, "createdAt", "updatedAt")
-          VALUES ('user-1', 'User 1', 'user1@example.com', NOW(), NOW())
-        `,
-        prisma.$executeRaw`
-          INSERT INTO "User" (id, name, email, "createdAt", "updatedAt")
-          VALUES ('user-2', 'User 2', 'user2@example.com', NOW(), NOW())
-        `,
-        prisma.$executeRaw`
-          INSERT INTO "User" (id, name, email, "createdAt", "updatedAt")
-          VALUES ('user-3', 'User 3', 'user3@example.com', NOW(), NOW())
-        `,
-        prisma.$executeRaw`
-          INSERT INTO "User" (id, name, email, "createdAt", "updatedAt")
-          VALUES ('user-4', 'User 4', 'user4@example.com', NOW(), NOW())
-        `,
-      ]);
-
-      const userRecords = await prisma.$queryRaw<Array<{ id: string; name: string; email: string }>>`
-        SELECT id, name, email FROM "User" ORDER BY id
-      `;
+      const userPromises = ['user-1', 'user-2', 'user-3', 'user-4'].map(id =>
+        prisma.user.create({
+          data: {
+            id,
+            name: `User ${id.split('-')[1]}`,
+            email: `user${id.split('-')[1]}@example.com`,
+          },
+        })
+      );
+      const userRecords = await Promise.all(userPromises);
 
       const initialUsers = userRecords.slice(0, 3).map(user =>
         User.rebuild(user.id, user.name, user.email, UserStatus.Enrolled)
@@ -140,47 +94,22 @@ describe('TeamRepositoryPrisma', () => {
       await repository.save(updatedTeam);
 
       // 更新されたデータを確認
-      const savedTeamData = await prisma.$queryRaw<Array<{
-        id: string;
-        name: string;
-        members: Array<{
-          userId: string;
-          user: {
-            id: string;
-            name: string;
-            email: string;
-          };
-        }>;
-      }>>`
-        SELECT
-          t.id,
-          t.name,
-          COALESCE(
-            json_agg(
-              json_build_object(
-                'userId', tu."userId",
-                'user', json_build_object(
-                  'id', u.id,
-                  'name', u.name,
-                  'email', u.email
-                )
-              )
-            ) FILTER (WHERE u.id IS NOT NULL),
-            '[]'
-          ) as members
-        FROM "Team" t
-        LEFT JOIN "TeamUser" tu ON t.id = tu."teamId"
-        LEFT JOIN "User" u ON tu."userId" = u.id
-        WHERE t.id = ${team.getTeamId()}
-        GROUP BY t.id, t.name
-      `;
+      const savedTeam = await prisma.team.findUnique({
+        where: { id: team.getTeamId() },
+        include: {
+          members: {
+            include: {
+              user: true,
+            },
+          },
+        },
+      });
 
-      const savedTeam = savedTeamData[0];
       expect(savedTeam).not.toBeNull();
-      expect(savedTeam.name).toBe('XYZ');
-      expect(savedTeam.members).toHaveLength(3);
+      expect(savedTeam?.name).toBe('XYZ');
+      expect(savedTeam?.members).toHaveLength(3);
 
-      const memberIds = savedTeam.members.map(m => m.userId).sort();
+      const memberIds = savedTeam?.members.map(m => m.userId).sort() ?? [];
       const expectedIds = userRecords.slice(1, 4).map(u => u.id).sort();
       expect(memberIds).toEqual(expectedIds);
     });
@@ -189,24 +118,16 @@ describe('TeamRepositoryPrisma', () => {
   describe('findByName', () => {
     test('チーム名で検索できる', async () => {
       // テスト用のユーザーを作成
-      await Promise.all([
-        prisma.$executeRaw`
-          INSERT INTO "User" (id, name, email, "createdAt", "updatedAt")
-          VALUES ('user-1', 'User 1', 'user1@example.com', NOW(), NOW())
-        `,
-        prisma.$executeRaw`
-          INSERT INTO "User" (id, name, email, "createdAt", "updatedAt")
-          VALUES ('user-2', 'User 2', 'user2@example.com', NOW(), NOW())
-        `,
-        prisma.$executeRaw`
-          INSERT INTO "User" (id, name, email, "createdAt", "updatedAt")
-          VALUES ('user-3', 'User 3', 'user3@example.com', NOW(), NOW())
-        `,
-      ]);
-
-      const userRecords = await prisma.$queryRaw<Array<{ id: string; name: string; email: string }>>`
-        SELECT id, name, email FROM "User" ORDER BY id
-      `;
+      const userPromises = ['user-1', 'user-2', 'user-3'].map(id =>
+        prisma.user.create({
+          data: {
+            id,
+            name: `User ${id.split('-')[1]}`,
+            email: `user${id.split('-')[1]}@example.com`,
+          },
+        })
+      );
+      const userRecords = await Promise.all(userPromises);
 
       const domainUsers = userRecords.map(user =>
         User.rebuild(user.id, user.name, user.email, UserStatus.Enrolled)
@@ -234,34 +155,36 @@ describe('TeamRepositoryPrisma', () => {
 
     test('メンバーが不足しているチームの場合はnullを返す', async () => {
       // メンバーが2名のチームを作成
-      const teamId = 'team-1';
-      await prisma.$executeRaw`
-        INSERT INTO "Team" (id, name, "createdAt", "updatedAt")
-        VALUES (${teamId}, 'ABC', NOW(), NOW())
-      `;
-
-      // 2名のメンバーを追加
-      await Promise.all([
-        prisma.$executeRaw`
-          INSERT INTO "User" (id, name, email, "createdAt", "updatedAt")
-          VALUES ('user-1', 'User 1', 'user1@example.com', NOW(), NOW())
-        `,
-        prisma.$executeRaw`
-          INSERT INTO "User" (id, name, email, "createdAt", "updatedAt")
-          VALUES ('user-2', 'User 2', 'user2@example.com', NOW(), NOW())
-        `,
-      ]);
-
-      await Promise.all([
-        prisma.$executeRaw`
-          INSERT INTO "TeamUser" (id, "teamId", "userId", role, "createdAt", "updatedAt")
-          VALUES (gen_random_uuid(), ${teamId}, 'user-1', 'MEMBER', NOW(), NOW())
-        `,
-        prisma.$executeRaw`
-          INSERT INTO "TeamUser" (id, "teamId", "userId", role, "createdAt", "updatedAt")
-          VALUES (gen_random_uuid(), ${teamId}, 'user-2', 'MEMBER', NOW(), NOW())
-        `,
-      ]);
+      await prisma.team.create({
+        data: {
+          id: 'team-1',
+          name: 'ABC',
+          members: {
+            create: [
+              {
+                id: 'team-user-1',
+                user: {
+                  create: {
+                    id: 'user-1',
+                    name: 'User 1',
+                    email: 'user1@example.com',
+                  },
+                },
+              },
+              {
+                id: 'team-user-2',
+                user: {
+                  create: {
+                    id: 'user-2',
+                    name: 'User 2',
+                    email: 'user2@example.com',
+                  },
+                },
+              },
+            ],
+          },
+        },
+      });
 
       const foundTeam = await repository.findByName(new TeamName('ABC'));
       expect(foundTeam).toBeNull();
