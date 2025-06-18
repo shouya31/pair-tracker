@@ -136,8 +136,7 @@ describe('TeamRepositoryPrisma', () => {
       const updatedUsers = userRecords.slice(1, 4).map(user =>
         User.rebuild(user.id, user.name, user.email, UserStatus.Enrolled)
       );
-      const updatedTeam = Team.create(new TeamName('XYZ'), updatedUsers);
-      Object.defineProperty(updatedTeam, 'teamId', { value: team.getTeamId() });
+      const updatedTeam = Team.rebuild(team.getTeamId(), new TeamName('XYZ'), updatedUsers);
       await repository.save(updatedTeam);
 
       // 更新されたデータを確認

@@ -52,4 +52,9 @@ export class Team {
   public getMembers(): User[] {
     return [...this.members];
   }
+
+  public static rebuild(teamId: string, name: TeamName, members: User[]): Team {
+    Team.validateMembers(members);
+    return new Team(teamId, name, members);
+  }
 }
