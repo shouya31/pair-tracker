@@ -10,6 +10,18 @@ describe('TeamName', () => {
       });
     });
 
+    test('前後の空白は自動的に削除される', () => {
+      const cases = [
+        { input: ' ABC ', expected: 'ABC' },
+        { input: '  A  ', expected: 'A' },
+        { input: '\tAB\n', expected: 'AB' },
+      ];
+
+      cases.forEach(({ input, expected }) => {
+        expect(new TeamName(input).getValue()).toBe(expected);
+      });
+    });
+
     test('同じ値を持つTeamNameは等価である', () => {
       const name1 = new TeamName('ABC');
       const name2 = new TeamName('ABC');
@@ -20,6 +32,12 @@ describe('TeamName', () => {
       const name1 = new TeamName('ABC');
       const name2 = new TeamName('XYZ');
       expect(name1.equals(name2)).toBe(false);
+    });
+
+    test('空白を含む値でも、トリム後の値で等価性が判定される', () => {
+      const name1 = new TeamName('ABC');
+      const name2 = new TeamName(' ABC ');
+      expect(name1.equals(name2)).toBe(true);
     });
   });
 
@@ -32,8 +50,19 @@ describe('TeamName', () => {
       expect(() => new TeamName('')).toThrow('チーム名は必須です');
     });
 
+    test('空白のみのチーム名は作成できない', () => {
+      const whitespaceOnlyCases = [' ', '   ', '\t', '\n', ' \n \t '];
+      whitespaceOnlyCases.forEach(value => {
+        expect(() => new TeamName(value)).toThrow('チーム名は必須です');
+      });
+    });
+
     test('nullのチーム名は作成できない', () => {
       expect(() => new TeamName(null as unknown as string)).toThrow('チーム名は必須です');
+    });
+
+    test('undefinedのチーム名は作成できない', () => {
+      expect(() => new TeamName(undefined as unknown as string)).toThrow('チーム名は必須です');
     });
   });
 });

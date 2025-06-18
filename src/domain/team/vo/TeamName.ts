@@ -3,7 +3,7 @@ export class TeamName {
 
   constructor(value: string) {
     this.validateTeamName(value);
-    this.value = value;
+    this.value = value.trim();
   }
 
   private validateTeamName(value: string): void {
@@ -11,7 +11,12 @@ export class TeamName {
       throw new Error('チーム名は必須です');
     }
 
-    if (value.length > 3) {
+    const trimmedValue = value.trim();
+    if (!trimmedValue) {
+      throw new Error('チーム名は必須です');
+    }
+
+    if (trimmedValue.length > 3) {
       throw new Error('チーム名は3文字以下である必要があります');
     }
   }
