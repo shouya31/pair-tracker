@@ -8,7 +8,11 @@ export class Team {
     private readonly teamId: string,
     private readonly name: TeamName,
     private readonly members: User[],
-  ) {}
+  ) {
+    this.teamId = teamId;
+    this.name = name;
+    this.members = [...members];
+  }
 
   public static create(name: TeamName, members: User[]): Team {
     Team.validateMembers(members);

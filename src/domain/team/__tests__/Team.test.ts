@@ -78,5 +78,35 @@ describe('Team', () => {
       expect(() => Team.create(validTeamName, members))
         .toThrow('チームメンバーは全員が在籍中である必要があります。以下のメンバーが在籍中ではありません：user2(Suspended), user3(Withdrawn)');
     });
+
+    test('元の配列を変更してもチームのメンバーには影響しない', () => {
+      const members = [
+        createEnrolledUser('user1', 'user1@example.com'),
+        createEnrolledUser('user2', 'user2@example.com'),
+        createEnrolledUser('user3', 'user3@example.com'),
+      ];
+      const team = Team.create(validTeamName, members);
+      const originalLength = team.getMembers().length;
+
+      members.push(createEnrolledUser('user4', 'user4@example.com'));
+
+      expect(team.getMembers().length).toBe(originalLength);
+      expect(members.length).toBe(originalLength + 1);
+    });
+
+    test('取得したメンバー配列を変更してもチームのメンバーには影響しない', () => {
+      const members = [
+        createEnrolledUser('user1', 'user1@example.com'),
+        createEnrolledUser('user2', 'user2@example.com'),
+        createEnrolledUser('user3', 'user3@example.com'),
+      ];
+      const team = Team.create(validTeamName, members);
+      const originalLength = team.getMembers().length;
+      const teamMembers = team.getMembers();
+      teamMembers.push(createEnrolledUser('user4', 'user4@example.com'));
+
+      expect(team.getMembers().length).toBe(originalLength);
+      expect(teamMembers.length).toBe(originalLength + 1);
+    });
   });
 });
