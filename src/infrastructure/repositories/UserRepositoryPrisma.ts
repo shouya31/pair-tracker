@@ -26,6 +26,25 @@ export class UserRepositoryPrisma implements IUserRepository {
     );
   }
 
+  async findById(id: string): Promise<User | null> {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: id,
+      },
+    });
+
+    if (!user) {
+      return null;
+    }
+
+    return User.rebuild(
+      user.id,
+      user.name,
+      user.email,
+      UserStatus.Enrolled
+    );
+  }
+
   async save(user: User): Promise<void> {
     await this.prisma.user.upsert({
       where: {
