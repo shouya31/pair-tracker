@@ -22,6 +22,15 @@ export class User {
     );
   }
 
+  public static rebuild(id: string, name: string, email: string, status: UserStatus): User {
+    return new User(
+      id,
+      name,
+      Email.create(email),
+      status,
+    );
+  }
+
   public getUserId(): string {
     return this.userId;
   }
