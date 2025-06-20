@@ -37,6 +37,16 @@ export class Team {
     }
   }
 
+  private static validateTeamId(teamId: string): void {
+    if (!teamId) {
+      throw new Error('チームIDは必須です');
+    }
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(teamId)) {
+      throw new Error('チームIDは有効なUUID形式である必要があります');
+    }
+  }
+
   public getTeamId(): string {
     return this.teamId;
   }
@@ -51,5 +61,11 @@ export class Team {
 
   public getMembers(): User[] {
     return [...this.members];
+  }
+
+  public static rebuild(teamId: string, name: TeamName, members: User[]): Team {
+    Team.validateTeamId(teamId);
+    Team.validateMembers(members);
+    return new Team(teamId, name, members);
   }
 }

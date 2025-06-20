@@ -18,6 +18,7 @@ describe('UserRepositoryPrisma', () => {
 
   beforeEach(async () => {
     repository = new UserRepositoryPrisma(prisma);
+    await prisma.teamUser.deleteMany();
     await prisma.user.deleteMany();
   });
 
