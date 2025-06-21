@@ -47,6 +47,44 @@ export class TeamRepositoryPrisma implements ITeamRepository {
     }
   }
 
+  async findById(id: string): Promise<Team | null> {
+    const teamData = await this.prisma.team.findUnique({
+      where: {
+        id: id,
+      },
+      include: {
+        members: {
+          include: {
+            user: true,
+          },
+        },
+      },
+    });
+
+    if (!teamData) {
+      return null;
+    }
+
+    const members = teamData.members.map(member =>
+      User.rebuild(
+        member.user.id,
+        member.user.name,
+        member.user.email,
+        UserStatus.Enrolled,
+      ),
+    );
+
+    if (members.length < 3) {
+      return null;
+    }
+
+    try {
+      return Team.rebuild(teamData.id, new TeamName(teamData.name), members);
+    } catch {
+      return null;
+    }
+  }
+
   async save(team: Team): Promise<void> {
     const teamId = team.getTeamId();
     const teamName = team.getName();
