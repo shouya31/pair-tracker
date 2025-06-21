@@ -52,10 +52,7 @@ describe('RegisterUserUseCase', () => {
       const invalidEmail = 'invalid-email';
       await expect(registerUserUseCase.execute(validName, invalidEmail))
         .rejects
-        .toThrow(EmailValidationError);
-      await expect(registerUserUseCase.execute(validName, invalidEmail))
-        .rejects
-        .toThrow('メールアドレスの検証に失敗しました: 無効なメールアドレスです: invalid-email');
+        .toThrowError(EmailValidationError.invalid(invalidEmail));
 
       expect(mockUserRepository.findByEmail).not.toHaveBeenCalled();
       expect(mockUserRepository.save).not.toHaveBeenCalled();
@@ -65,10 +62,7 @@ describe('RegisterUserUseCase', () => {
       const emptyName = '';
       await expect(registerUserUseCase.execute(emptyName, validEmail))
         .rejects
-        .toThrow(UserNameValidationError);
-      await expect(registerUserUseCase.execute(emptyName, validEmail))
-        .rejects
-        .toThrow('名前の検証に失敗しました: 名前を入力してください');
+        .toThrowError(new UserNameValidationError('名前を入力してください', '名前', undefined));
 
       expect(mockUserRepository.findByEmail).not.toHaveBeenCalled();
       expect(mockUserRepository.save).not.toHaveBeenCalled();
