@@ -1,11 +1,11 @@
-import { FormPairUseCase } from '../FormPairUseCase';
-import { ITeamRepository } from '../../../../domain/team/ITeamRepository';
-import { IUserRepository } from '../../../../domain/user/IUserRepository';
-import { Team } from '../../../../domain/team/Team';
-import { User } from '../../../../domain/user/User';
-import { TeamName } from '../../../../domain/team/vo/TeamName';
-import { UserStatus } from '../../../../domain/user/enums/UserStatus';
-import { UserNotFoundError, TeamNotFoundError } from '../../errors/TeamErrors';
+import { FormPairUseCase } from './FormPairUseCase';
+import { ITeamRepository } from '../../../domain/team/ITeamRepository';
+import { IUserRepository } from '../../../domain/user/IUserRepository';
+import { Team } from '../../../domain/team/Team';
+import { User } from '../../../domain/user/User';
+import { TeamName } from '../../../domain/team/vo/TeamName';
+import { UserStatus } from '../../../domain/user/enums/UserStatus';
+import { UserNotFoundError, TeamNotFoundError } from '../errors/TeamErrors';
 
 describe('FormPairUseCase', () => {
   let teamRepository: jest.Mocked<ITeamRepository>;

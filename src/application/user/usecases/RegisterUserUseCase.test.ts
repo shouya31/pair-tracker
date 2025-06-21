@@ -1,7 +1,8 @@
-import { IUserRepository } from '../../../src/domain/user/IUserRepository';
-import { User } from '../../../src/domain/user/User';
-import { RegisterUserUseCase } from '../../../src/application/user/usecases/RegisterUserUseCase';
-import { Email } from '../../../src/domain/shared/Email';
+import { RegisterUserUseCase } from './RegisterUserUseCase';
+import { IUserRepository } from '../../../domain/user/IUserRepository';
+import { User } from '../../../domain/user/User';
+import { Email } from '../../../domain/shared/Email';
+import { UserStatus } from '../../../domain/user/enums/UserStatus';
 
 describe('RegisterUserUseCase', () => {
   let mockUserRepository: jest.Mocked<IUserRepository>;
