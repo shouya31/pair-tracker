@@ -1,12 +1,13 @@
 import { IUserRepository } from '../../../domain/user/IUserRepository';
 import { User } from '../../../domain/user/User';
 import { Email } from '../../../domain/shared/Email';
+import { UserNameValidationError } from '../../../domain/user/errors/UserNameValidationError';
 
 export class RegisterUserUseCase {
   constructor(private readonly userRepository: IUserRepository) {}
   async execute(name: string, email: string): Promise<void> {
     if (!name.trim()) {
-      throw new Error('名前を入力してください');
+      throw UserNameValidationError.required();
     }
 
     const emailVO = Email.create(email);

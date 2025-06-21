@@ -1,4 +1,5 @@
 import { TeamName } from './TeamName';
+import { TeamNameLengthError, TeamNameRequiredError } from '../errors/TeamValidationError';
 
 describe('TeamName', () => {
   describe('正常系', () => {
@@ -43,26 +44,31 @@ describe('TeamName', () => {
 
   describe('異常系', () => {
     test('4文字以上のチーム名は作成できない', () => {
-      expect(() => new TeamName('ABCD')).toThrow('チーム名は3文字以下である必要があります');
+      expect(() => new TeamName('ABCD')).toThrow(TeamNameLengthError);
+      expect(() => new TeamName('ABCD')).toThrow('チーム名の検証に失敗しました: 3文字以下で入力してください（現在: 4文字）');
     });
 
     test('空文字のチーム名は作成できない', () => {
-      expect(() => new TeamName('')).toThrow('チーム名は必須です');
+      expect(() => new TeamName('')).toThrow(TeamNameRequiredError);
+      expect(() => new TeamName('')).toThrow('チーム名の検証に失敗しました: この項目は必須です');
     });
 
     test('空白のみのチーム名は作成できない', () => {
       const whitespaceOnlyCases = [' ', '   ', '\t', '\n', ' \n \t '];
       whitespaceOnlyCases.forEach(value => {
-        expect(() => new TeamName(value)).toThrow('チーム名は必須です');
+        expect(() => new TeamName(value)).toThrow(TeamNameRequiredError);
+        expect(() => new TeamName(value)).toThrow('チーム名の検証に失敗しました: この項目は必須です');
       });
     });
 
     test('nullのチーム名は作成できない', () => {
-      expect(() => new TeamName(null as unknown as string)).toThrow('チーム名は必須です');
+      expect(() => new TeamName(null as unknown as string)).toThrow(TeamNameRequiredError);
+      expect(() => new TeamName(null as unknown as string)).toThrow('チーム名の検証に失敗しました: この項目は必須です');
     });
 
     test('undefinedのチーム名は作成できない', () => {
-      expect(() => new TeamName(undefined as unknown as string)).toThrow('チーム名は必須です');
+      expect(() => new TeamName(undefined as unknown as string)).toThrow(TeamNameRequiredError);
+      expect(() => new TeamName(undefined as unknown as string)).toThrow('チーム名の検証に失敗しました: この項目は必須です');
     });
   });
 });

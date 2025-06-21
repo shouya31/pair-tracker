@@ -1,6 +1,7 @@
 import { UserStatus } from './enums/UserStatus';
 import { Email } from '../shared/Email';
 import { randomUUID } from 'crypto';
+import { UserNameValidationError } from './errors/UserNameValidationError';
 
 export class User {
   private constructor(
@@ -12,7 +13,7 @@ export class User {
 
   public static create(name: string, email: string): User {
     if (!name.trim()) {
-      throw new Error('名前を入力してください');
+      throw UserNameValidationError.required();
     }
     return new User(
       randomUUID(),

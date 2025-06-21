@@ -4,6 +4,8 @@ import { User } from '../user/User';
 import { UserStatus } from '../user/enums/UserStatus';
 import { Pair } from './Pair';
 import { PairName } from './vo/PairName';
+import { TeamDomainError } from './errors/TeamDomainError';
+import { TeamIdRequiredError, TeamIdFormatError } from './errors/TeamValidationError';
 
 export class Team {
   private readonly pairs: Pair[] = [];
@@ -25,7 +27,7 @@ export class Team {
 
   private static validateMembers(members: User[]): void {
     if (members.length < 3) {
-      throw new Error('チームは3名以上のメンバーが必要です');
+      throw TeamDomainError.memberCountError(members.length);
     }
 
     const nonEnrolledMembers = members.filter(
@@ -33,21 +35,17 @@ export class Team {
     );
 
     if (nonEnrolledMembers.length > 0) {
-      const nonEnrolledDetails = nonEnrolledMembers
-        .map(member => `${member.getName()}(${member.getStatus()})`)
-        .join(', ');
-
-      throw new Error(`チームメンバーは全員が在籍中である必要があります。以下のメンバーが在籍中ではありません：${nonEnrolledDetails}`);
+      throw TeamDomainError.memberStatusError(nonEnrolledMembers);
     }
   }
 
   private static validateTeamId(teamId: string): void {
     if (!teamId) {
-      throw new Error('チームIDは必須です');
+      throw new TeamIdRequiredError();
     }
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(teamId)) {
-      throw new Error('チームIDは有効なUUID形式である必要があります');
+      throw new TeamIdFormatError(teamId);
     }
   }
 
@@ -80,21 +78,17 @@ export class Team {
   }
 
   private validatePairFormation(membersToPair: User[]): void {
-    // メンバー数の検証
     if (membersToPair.length < 2 || membersToPair.length > 3) {
-      throw new Error('ペアは2名または3名で構成する必要があります');
+      throw TeamDomainError.invalidPairMemberCount(membersToPair.length);
     }
 
-    // チームメンバーに含まれているか検証
     const nonTeamMembers = membersToPair.filter(
       member => !this.members.some(teamMember => teamMember.equals(member))
     );
 
     if (nonTeamMembers.length > 0) {
-      const nonTeamMemberNames = nonTeamMembers
-        .map(member => member.getName())
-        .join(', ');
-      throw new Error(`以下のメンバーはチームに所属していません：${nonTeamMemberNames}`);
+      const nonTeamMemberNames = nonTeamMembers.map(member => member.getName());
+      throw TeamDomainError.nonTeamMemberError(nonTeamMemberNames);
     }
   }
 

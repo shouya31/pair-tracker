@@ -38,3 +38,65 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 ## ドメイン概要（集約間の関係）
 
 ![Domain Overview](docs/domain/DomainOverview.svg)
+
+## エラー設計のルール
+
+このプロジェクトでは、以下のルールに従ってエラーを設計・実装しています：
+
+### 1. エラーの階層構造
+
+```
+src/
+├── domain/
+│   ├── shared/errors/
+│   │   └── ValidationError (abstract) - すべてのバリデーションエラーの基底クラス
+│   │
+│   ├── {domain}/errors/
+│   │   ├── {Domain}ValidationError - ドメイン固有のバリデーションエラー
+│   │   └── {Domain}DomainError - ドメインのビジネスルール違反エラー
+│   │
+└── application/
+    └── {usecase}/errors/
+        └── {UseCase}Error - アプリケーション層固有のエラー
+```
+
+### 2. エラーメッセージの形式
+
+- バリデーションエラー: `{プロパティ名}の検証に失敗しました: {具体的な理由}`
+  - 例: `メールアドレスの検証に失敗しました: 無効なメールアドレスです: invalid-email`
+  - 例: `名前の検証に失敗しました: 名前を入力してください`
+
+- ドメインエラー: `{具体的な理由}`
+  - 例: `チームは3名以上のメンバーが必要です（現在: 2名）`
+  - 例: `チームメンバーは全員が在籍中である必要があります`
+
+- アプリケーションエラー: `{ユーザーフレンドリーなメッセージ}`
+  - 例: `このメールアドレスは既に登録されています`
+  - 例: `ユーザーID "1234" が見つかりません`
+
+### 3. エラークラスの命名規則
+
+- バリデーションエラー: `{Target}ValidationError`
+  - 例: `EmailValidationError`, `UserNameValidationError`
+
+- ドメインエラー: `{Domain}DomainError`
+  - 例: `TeamDomainError`
+
+- アプリケーションエラー: `{UseCase}Error`
+  - 例: `DuplicateTeamNameError`, `UserNotFoundError`
+
+### 4. エラー処理の原則
+
+1. **ドメイン層**:
+   - 値オブジェクトの不変条件違反 → ValidationError
+   - ドメインルールの違反 → DomainError
+   - エラーメッセージは技術的な詳細を含む
+
+2. **アプリケーション層**:
+   - ユースケース固有の制約違反 → ApplicationError
+   - 外部リソースのエラー → 適切なApplicationErrorに変換
+   - エラーメッセージはユーザーフレンドリー
+
+3. **プレゼンテーション層**:
+   - エラーメッセージの表示のみを担当
+   - 必要に応じてエラーメッセージを整形

@@ -3,6 +3,8 @@ import { TeamName } from './vo/TeamName';
 import { User } from '../user/User';
 import { UserStatus } from '../user/enums/UserStatus';
 import { PairName } from './vo/PairName';
+import { TeamDomainError } from './errors/TeamDomainError';
+import { TeamIdRequiredError, TeamIdFormatError } from './errors/TeamValidationError';
 
 describe('Team', () => {
   describe('create', () => {
@@ -44,7 +46,9 @@ describe('Team', () => {
       ];
 
       expect(() => Team.create(validTeamName, members))
-        .toThrow('チームは3名以上のメンバーが必要です');
+        .toThrow(TeamDomainError);
+      expect(() => Team.create(validTeamName, members))
+        .toThrow('チームは3名以上のメンバーが必要です（現在: 2名）');
     });
 
     test('非在籍中のメンバーがいる場合はエラーになる', () => {
@@ -54,6 +58,8 @@ describe('Team', () => {
         createNonEnrolledUser('user3', 'user3@example.com', UserStatus.Suspended),
       ];
 
+      expect(() => Team.create(validTeamName, members))
+        .toThrow(TeamDomainError);
       expect(() => Team.create(validTeamName, members))
         .toThrow('チームメンバーは全員が在籍中である必要があります。以下のメンバーが在籍中ではありません：user3(Suspended)');
     });
@@ -66,6 +72,8 @@ describe('Team', () => {
       ];
 
       expect(() => Team.create(validTeamName, members))
+        .toThrow(TeamDomainError);
+      expect(() => Team.create(validTeamName, members))
         .toThrow('チームメンバーは全員が在籍中である必要があります。以下のメンバーが在籍中ではありません：user3(Withdrawn)');
     });
 
@@ -76,6 +84,8 @@ describe('Team', () => {
         createNonEnrolledUser('user3', 'user3@example.com', UserStatus.Withdrawn),
       ];
 
+      expect(() => Team.create(validTeamName, members))
+        .toThrow(TeamDomainError);
       expect(() => Team.create(validTeamName, members))
         .toThrow('チームメンバーは全員が在籍中である必要があります。以下のメンバーが在籍中ではありません：user2(Suspended), user3(Withdrawn)');
     });
@@ -152,7 +162,9 @@ describe('Team', () => {
       ];
 
       expect(() => Team.rebuild('', validTeamName, members))
-        .toThrow('チームIDは必須です');
+        .toThrow(TeamIdRequiredError);
+      expect(() => Team.rebuild('', validTeamName, members))
+        .toThrow('チームIDの検証に失敗しました: この項目は必須です');
     });
 
     test('不正なUUID形式の場合はエラーになる', () => {
@@ -163,7 +175,9 @@ describe('Team', () => {
       ];
 
       expect(() => Team.rebuild('invalid-uuid', validTeamName, members))
-        .toThrow('チームIDは有効なUUID形式である必要があります');
+        .toThrow(TeamIdFormatError);
+      expect(() => Team.rebuild('invalid-uuid', validTeamName, members))
+        .toThrow('チームIDの検証に失敗しました: UUIDの形式で入力してください');
     });
 
     test('メンバーが2名以下の場合はエラーになる', () => {
@@ -173,7 +187,9 @@ describe('Team', () => {
       ];
 
       expect(() => Team.rebuild(validUUID, validTeamName, members))
-        .toThrow('チームは3名以上のメンバーが必要です');
+        .toThrow(TeamDomainError);
+      expect(() => Team.rebuild(validUUID, validTeamName, members))
+        .toThrow('チームは3名以上のメンバーが必要です（現在: 2名）');
     });
 
     test('非在籍中のメンバーがいる場合はエラーになる', () => {
@@ -183,6 +199,8 @@ describe('Team', () => {
         createNonEnrolledUser('user3', 'user3@example.com', UserStatus.Suspended),
       ];
 
+      expect(() => Team.rebuild(validUUID, validTeamName, members))
+        .toThrow(TeamDomainError);
       expect(() => Team.rebuild(validUUID, validTeamName, members))
         .toThrow('チームメンバーは全員が在籍中である必要があります。以下のメンバーが在籍中ではありません：user3(Suspended)');
     });
@@ -249,7 +267,9 @@ describe('Team', () => {
       const pairName = new PairName('C');
 
       expect(() => team.formPair(membersToPair, pairName))
-        .toThrow('ペアは2名または3名で構成する必要があります');
+        .toThrow(TeamDomainError);
+      expect(() => team.formPair(membersToPair, pairName))
+        .toThrow('ペアは2名または3名で構成する必要があります（現在: 1名）');
     });
 
     test('4名以上のメンバーでペアを作成しようとするとエラーになる', () => {
@@ -257,7 +277,9 @@ describe('Team', () => {
       const pairName = new PairName('D');
 
       expect(() => team.formPair(membersToPair, pairName))
-        .toThrow('ペアは2名または3名で構成する必要があります');
+        .toThrow(TeamDomainError);
+      expect(() => team.formPair(membersToPair, pairName))
+        .toThrow('ペアは2名または3名で構成する必要があります（現在: 4名）');
     });
 
     test('チームに所属していないメンバーでペアを作成しようとするとエラーになる', () => {
@@ -265,6 +287,8 @@ describe('Team', () => {
       const membersToPair = [teamMembers[0], nonTeamMember];
       const pairName = new PairName('E');
 
+      expect(() => team.formPair(membersToPair, pairName))
+        .toThrow(TeamDomainError);
       expect(() => team.formPair(membersToPair, pairName))
         .toThrow('以下のメンバーはチームに所属していません：outsider');
     });
