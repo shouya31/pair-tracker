@@ -60,4 +60,5 @@ model UserPair {
   pair      Pair     @relation(fields: [pairId], references: [id])
 
   @@unique([userId, pairId])
+  @@index([pairId])
 }
