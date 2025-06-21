@@ -1,8 +1,8 @@
-import { Team } from '../Team';
-import { TeamName } from '../vo/TeamName';
-import { User } from '../../user/User';
-import { UserStatus } from '../../user/enums/UserStatus';
-import { PairName } from '../vo/PairName';
+import { Team } from './Team';
+import { TeamName } from './vo/TeamName';
+import { User } from '../user/User';
+import { UserStatus } from '../user/enums/UserStatus';
+import { PairName } from './vo/PairName';
 
 describe('Team', () => {
   describe('create', () => {

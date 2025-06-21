@@ -1,8 +1,8 @@
 import { PrismaClient } from '@prisma/client';
-import { UserRepositoryPrisma } from '../UserRepositoryPrisma';
-import { User } from '../../../domain/user/User';
-import { Email } from '../../../domain/shared/Email';
-import { UserStatus } from '../../../domain/user/enums/UserStatus';
+import { UserRepositoryPrisma } from './UserRepositoryPrisma';
+import { User } from '../../domain/user/User';
+import { Email } from '../../domain/shared/Email';
+import { UserStatus } from '../../domain/user/enums/UserStatus';
 
 describe('UserRepositoryPrisma', () => {
   let prisma: PrismaClient;

@@ -1,5 +1,5 @@
-import { PairName } from '../PairName';
-import { PairNameValidationError } from '../../errors/PairNameValidationError';
+import { PairName } from './PairName';
+import { PairNameValidationError } from '../errors/PairNameValidationError';
 
 describe('PairName', () => {
   describe('正常系', () => {

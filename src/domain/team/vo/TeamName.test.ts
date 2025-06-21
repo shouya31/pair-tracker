@@ -1,4 +1,4 @@
-import { TeamName } from '../TeamName';
+import { TeamName } from './TeamName';
 
 describe('TeamName', () => {
   describe('正常系', () => {

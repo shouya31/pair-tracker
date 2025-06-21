@@ -1,8 +1,9 @@
 import { PrismaClient } from '@prisma/client';
-import { TeamRepositoryPrisma } from '../TeamRepositoryPrisma';
-import { Team } from '../../../domain/team/Team';
-import { TeamName } from '../../../domain/team/vo/TeamName';
-import { User } from '../../../domain/user/User';
+import { TeamRepositoryPrisma } from './TeamRepositoryPrisma';
+import { Team } from '../../domain/team/Team';
+import { TeamName } from '../../domain/team/vo/TeamName';
+import { User } from '../../domain/user/User';
+import { UserStatus } from '../../domain/user/enums/UserStatus';
 
 describe('TeamRepositoryPrisma', () => {
   let prisma: PrismaClient;

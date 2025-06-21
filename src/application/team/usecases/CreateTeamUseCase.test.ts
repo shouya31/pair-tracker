@@ -1,11 +1,12 @@
-import { CreateTeamUseCase } from '../CreateTeamUseCase';
-import { ITeamRepository } from '../../../../domain/team/ITeamRepository';
-import { IUserRepository } from '../../../../domain/user/IUserRepository';
-import { Team } from '../../../../domain/team/Team';
-import { User } from '../../../../domain/user/User';
-import { UserStatus } from '../../../../domain/user/enums/UserStatus';
+import { CreateTeamUseCase } from './CreateTeamUseCase';
+import { ITeamRepository } from '../../../domain/team/ITeamRepository';
+import { IUserRepository } from '../../../domain/user/IUserRepository';
+import { Team } from '../../../domain/team/Team';
+import { TeamName } from '../../../domain/team/vo/TeamName';
+import { User } from '../../../domain/user/User';
+import { UserStatus } from '../../../domain/user/enums/UserStatus';
 import { Prisma } from '@prisma/client';
-import { DuplicateTeamNameError, UserNotFoundError } from '../../errors/TeamErrors';
+import { DuplicateTeamNameError, UserNotFoundError } from '../errors/TeamErrors';
 
 describe('CreateTeamUseCase', () => {
   let teamRepository: jest.Mocked<ITeamRepository>;
