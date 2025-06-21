@@ -1,0 +1,63 @@
+@startuml Database_ER
+
+' 表示の一貫性のための設定
+skinparam dpi 300
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam padding 2
+
+' エンティティの定義
+entity "User" as user {
+  + id : UUID <<PK>>
+  --
+  email : String <<UK>>
+  name : String
+  createdAt : DateTime
+  updatedAt : DateTime
+}
+
+entity "Team" as team {
+  + id : UUID <<PK>>
+  --
+  name : String <<UK>>
+  description : String <<nullable>>
+  createdAt : DateTime
+  updatedAt : DateTime
+}
+
+entity "TeamUser" as teamUser {
+  + id : UUID <<PK>>
+  --
+  userId : UUID <<FK>>
+  teamId : UUID <<FK>>
+  role : String
+  createdAt : DateTime
+  updatedAt : DateTime
+}
+
+entity "Pair" as pair {
+  + id : UUID <<PK>>
+  --
+  name : String
+  teamId : UUID <<FK>>
+  createdAt : DateTime
+  updatedAt : DateTime
+}
+
+entity "UserPair" as userPair {
+  + id : UUID <<PK>>
+  --
+  userId : UUID <<FK>>
+  pairId : UUID <<FK>>
+  createdAt : DateTime
+  updatedAt : DateTime
+}
+
+' リレーションシップの定義
+team "1" --o{ teamUser
+user "1" --o{ teamUser
+team "1" --o{ pair
+user "1" --o{ userPair
+pair "1" --o{ userPair
+
+@enduml
