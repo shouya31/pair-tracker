@@ -5,15 +5,14 @@ import { Team } from '../../domain/team/Team';
 import { TeamName } from '../../domain/team/vo/TeamName';
 import { User } from '../../domain/user/User';
 import { UserStatus } from '../../domain/user/enums/UserStatus';
+import { Prisma } from '@prisma/client';
 
 export class TeamRepositoryPrisma implements ITeamRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async findByName(name: TeamName): Promise<Team | null> {
+  private async findTeamByCondition(where: Prisma.TeamWhereUniqueInput): Promise<Team | null> {
     const teamData = await this.prisma.team.findUnique({
-      where: {
-        name: name.getValue(),
-      },
+      where,
       include: {
         members: {
           include: {
@@ -47,42 +46,12 @@ export class TeamRepositoryPrisma implements ITeamRepository {
     }
   }
 
+  async findByName(name: TeamName): Promise<Team | null> {
+    return this.findTeamByCondition({ name: name.getValue() });
+  }
+
   async findById(id: string): Promise<Team | null> {
-    const teamData = await this.prisma.team.findUnique({
-      where: {
-        id: id,
-      },
-      include: {
-        members: {
-          include: {
-            user: true,
-          },
-        },
-      },
-    });
-
-    if (!teamData) {
-      return null;
-    }
-
-    const members = teamData.members.map(member =>
-      User.rebuild(
-        member.user.id,
-        member.user.name,
-        member.user.email,
-        UserStatus.Enrolled,
-      ),
-    );
-
-    if (members.length < 3) {
-      return null;
-    }
-
-    try {
-      return Team.rebuild(teamData.id, new TeamName(teamData.name), members);
-    } catch {
-      return null;
-    }
+    return this.findTeamByCondition({ id });
   }
 
   async save(team: Team): Promise<void> {
