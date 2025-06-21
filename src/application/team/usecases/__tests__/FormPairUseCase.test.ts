@@ -84,7 +84,7 @@ describe('FormPairUseCase', () => {
     ).rejects.toThrow(TeamNotFoundError);
     await expect(
       useCase.execute(nonExistentTeamId, [USER_IDS[0], USER_IDS[1]], 'A')
-    ).rejects.toThrow(`Team not found: ${nonExistentTeamId}`);
+    ).rejects.toThrow(`チームID "${nonExistentTeamId}" が見つかりません`);
   });
 
   it('存在しないユーザーの場合はUserNotFoundErrorを投げる', async () => {
@@ -106,6 +106,6 @@ describe('FormPairUseCase', () => {
     ).rejects.toThrow(UserNotFoundError);
     await expect(
       useCase.execute(TEAM_ID, [mockUsers[0].getUserId(), nonExistentUserId], 'A')
-    ).rejects.toThrow(`User not found: ${nonExistentUserId}`);
+    ).rejects.toThrow(`ユーザーID "${nonExistentUserId}" が見つかりません`);
   });
 }); 

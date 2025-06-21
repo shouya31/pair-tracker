@@ -9,14 +9,14 @@ export class DuplicateTeamNameError extends ApplicationError {
 
 export class UserNotFoundError extends Error {
   constructor(userId: string) {
-    super(`User not found: ${userId}`);
+    super(`ユーザーID "${userId}" が見つかりません`);
     this.name = 'UserNotFoundError';
   }
 }
 
 export class TeamNotFoundError extends Error {
   constructor(teamId: string) {
-    super(`Team not found: ${teamId}`);
+    super(`チームID "${teamId}" が見つかりません`);
     this.name = 'TeamNotFoundError';
   }
 } 
