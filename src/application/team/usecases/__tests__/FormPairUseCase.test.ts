@@ -5,7 +5,7 @@ import { Team } from '../../../../domain/team/Team';
 import { User } from '../../../../domain/user/User';
 import { TeamName } from '../../../../domain/team/vo/TeamName';
 import { UserStatus } from '../../../../domain/user/enums/UserStatus';
-import { UserNotFoundError } from '../../errors/TeamErrors';
+import { UserNotFoundError, TeamNotFoundError } from '../../errors/TeamErrors';
 
 describe('FormPairUseCase', () => {
   let teamRepository: jest.Mocked<ITeamRepository>;
@@ -73,25 +73,39 @@ describe('FormPairUseCase', () => {
     expect(teamRepository.save).toHaveBeenCalledWith(expect.any(Team));
   });
 
-  it('存在しないチームの場合はエラーを投げる', async () => {
+  it('存在しないチームの場合はTeamNotFoundErrorを投げる', async () => {
+    const nonExistentTeamId = '12345678-1234-4123-8123-123456789xyz';
     // モックの設定
     teamRepository.findById.mockResolvedValue(null);
 
     // テストの実行と検証
     await expect(
-      useCase.execute('12345678-1234-4123-8123-123456789xyz', [USER_IDS[0], USER_IDS[1]], 'A')
-    ).rejects.toThrow('Team not found');
+      useCase.execute(nonExistentTeamId, [USER_IDS[0], USER_IDS[1]], 'A')
+    ).rejects.toThrow(TeamNotFoundError);
+    await expect(
+      useCase.execute(nonExistentTeamId, [USER_IDS[0], USER_IDS[1]], 'A')
+    ).rejects.toThrow(`Team not found: ${nonExistentTeamId}`);
   });
 
-  it('存在しないユーザーの場合はエラーを投げる', async () => {
+  it('存在しないユーザーの場合はUserNotFoundErrorを投げる', async () => {
+    const nonExistentUserId = '12345678-1234-4123-8123-123456789xyz';
+    
     // モックの設定
     teamRepository.findById.mockResolvedValue(mockTeam);
-    userRepository.findById.mockResolvedValueOnce(mockUsers[0]); // 1人目は存在する
-    userRepository.findById.mockResolvedValueOnce(null); // 2人目は存在しない
+    userRepository.findById
+      .mockImplementation((id) => {
+        if (id === nonExistentUserId) {
+          return Promise.resolve(null);
+        }
+        return Promise.resolve(mockUsers[0]);
+      });
 
     // テストの実行と検証
     await expect(
-      useCase.execute(TEAM_ID, [USER_IDS[0], '12345678-1234-4123-8123-123456789xyz'], 'A')
+      useCase.execute(TEAM_ID, [mockUsers[0].getUserId(), nonExistentUserId], 'A')
     ).rejects.toThrow(UserNotFoundError);
+    await expect(
+      useCase.execute(TEAM_ID, [mockUsers[0].getUserId(), nonExistentUserId], 'A')
+    ).rejects.toThrow(`User not found: ${nonExistentUserId}`);
   });
 }); 

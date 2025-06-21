@@ -1,7 +1,7 @@
 import { ITeamRepository } from '../../../domain/team/ITeamRepository';
 import { IUserRepository } from '../../../domain/user/IUserRepository';
 import { PairName } from '../../../domain/team/vo/PairName';
-import { UserNotFoundError } from '../errors/TeamErrors';
+import { UserNotFoundError, TeamNotFoundError } from '../errors/TeamErrors';
 
 export class FormPairUseCase {
   constructor(
@@ -13,7 +13,7 @@ export class FormPairUseCase {
     // チームの取得
     const team = await this.teamRepository.findById(teamId);
     if (!team) {
-      throw new Error('Team not found');
+      throw new TeamNotFoundError(teamId);
     }
 
     // メンバーの取得
