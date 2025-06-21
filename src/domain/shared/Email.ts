@@ -16,9 +16,6 @@ export class Email {
   }
 
   private static isValid(email: string): boolean {
-    // RFC 5322に基づく基本的なメールアドレスの正規表現
-    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-
     if (!email || typeof email !== 'string') return false;
 
     // RFC 5321で定義されている最大長のチェック
@@ -30,7 +27,22 @@ export class Email {
     if (domain.length > 255) return false;    // ドメイン部は255文字まで
     if (email.length > 254) return false;     // 全体で254文字まで
 
-    if (!emailRegex.test(email)) return false;
+    // ローカル部のチェック
+    if (!/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+$/.test(localPart)) return false;
+    if (/\.{2,}/.test(localPart)) return false;  // 連続したドットは不可
+    if (localPart.startsWith('.') || localPart.endsWith('.')) return false;
+
+    // ドメイン部のチェック
+    const domainParts = domain.split('.');
+    if (domainParts.length < 2) return false;  // 少なくとも1つのドットが必要
+    if (domain.includes('..')) return false;   // 連続したドットは不可
+    if (domain.startsWith('-') || domain.endsWith('-')) return false;
+
+    // 各ドメインパートのチェック
+    for (const part of domainParts) {
+      if (part.length === 0) return false;
+      if (!/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/.test(part)) return false;
+    }
 
     return true;
   }
