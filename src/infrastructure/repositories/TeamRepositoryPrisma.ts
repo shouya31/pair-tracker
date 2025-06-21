@@ -51,8 +51,10 @@ export class TeamRepositoryPrisma implements ITeamRepository {
     const teamId = team.getTeamId();
     const teamName = team.getName();
     const members = team.getMembers();
+    const pairs = team.getPairs();
 
     await this.prisma.$transaction(async tx => {
+      // チームの保存・更新
       await tx.team.upsert({
         where: { id: teamId },
         create: {
@@ -78,6 +80,34 @@ export class TeamRepositoryPrisma implements ITeamRepository {
           },
         },
       });
+
+      // 既存のペアのメンバーを削除
+      await tx.userPair.deleteMany({
+        where: { pair: { teamId } },
+      });
+
+      // 既存のペアを削除
+      await tx.pair.deleteMany({
+        where: { teamId },
+      });
+
+      // 新しいペアを作成
+      for (const pair of pairs) {
+        const pairId = randomUUID();
+        await tx.pair.create({
+          data: {
+            id: pairId,
+            name: pair.getName().getValue(),
+            teamId: teamId,
+            members: {
+              create: pair.getMembers().map(member => ({
+                id: randomUUID(),
+                userId: member.getUserId(),
+              })),
+            },
+          },
+        });
+      }
     });
   }
 }

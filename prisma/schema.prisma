@@ -14,6 +14,7 @@ model User {
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   teams     TeamUser[]
+  pairs     UserPair[]
 }
 
 model Team {
@@ -23,6 +24,7 @@ model Team {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   members     TeamUser[]
+  pairs       Pair[]
 }
 
 model TeamUser {
@@ -36,4 +38,29 @@ model TeamUser {
   team      Team     @relation(fields: [teamId], references: [id])
 
   @@unique([userId, teamId])
+}
+
+model Pair {
+  id        String     @id @default(uuid())
+  name      String
+  teamId    String
+  team      Team       @relation(fields: [teamId], references: [id])
+  members   UserPair[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([teamId, name])
+}
+
+model UserPair {
+  id        String   @id @default(uuid())
+  userId    String
+  pairId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+  pair      Pair     @relation(fields: [pairId], references: [id])
+
+  @@unique([userId, pairId])
+  @@index([pairId])
 }

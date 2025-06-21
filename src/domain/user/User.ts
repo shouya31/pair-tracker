@@ -50,4 +50,8 @@ export class User {
   public getStatus(): UserStatus {
     return this.status;
   }
+
+  public equals(other: User): boolean {
+    return this.userId === other.userId;
+  }
 }

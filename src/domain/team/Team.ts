@@ -2,8 +2,12 @@ import { randomUUID } from 'crypto';
 import { TeamName } from './vo/TeamName';
 import { User } from '../user/User';
 import { UserStatus } from '../user/enums/UserStatus';
+import { Pair } from './Pair';
+import { PairName } from './vo/PairName';
 
 export class Team {
+  private readonly pairs: Pair[] = [];
+
   private constructor(
     private readonly teamId: string,
     private readonly name: TeamName,
@@ -67,5 +71,34 @@ export class Team {
     Team.validateTeamId(teamId);
     Team.validateMembers(members);
     return new Team(teamId, name, members);
+  }
+
+  public formPair(membersToPair: User[], pairName: PairName): void {
+    this.validatePairFormation(membersToPair);
+    const pair = new Pair(pairName, membersToPair);
+    this.pairs.push(pair);
+  }
+
+  private validatePairFormation(membersToPair: User[]): void {
+    // メンバー数の検証
+    if (membersToPair.length < 2 || membersToPair.length > 3) {
+      throw new Error('ペアは2名または3名で構成する必要があります');
+    }
+
+    // チームメンバーに含まれているか検証
+    const nonTeamMembers = membersToPair.filter(
+      member => !this.members.some(teamMember => teamMember.equals(member))
+    );
+
+    if (nonTeamMembers.length > 0) {
+      const nonTeamMemberNames = nonTeamMembers
+        .map(member => member.getName())
+        .join(', ');
+      throw new Error(`以下のメンバーはチームに所属していません：${nonTeamMemberNames}`);
+    }
+  }
+
+  public getPairs(): Pair[] {
+    return [...this.pairs];
   }
 }
