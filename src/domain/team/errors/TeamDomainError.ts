@@ -2,10 +2,6 @@ import { DomainError } from '../../shared/DomainError';
 import { User } from '../../user/User';
 
 export class TeamDomainError extends DomainError {
-  constructor(message: string) {
-    super(message);
-  }
-
   static memberCountError(count: number): TeamDomainError {
     return new TeamDomainError(`チームは3名以上のメンバーが必要です（現在: ${count}名）`);
   }
