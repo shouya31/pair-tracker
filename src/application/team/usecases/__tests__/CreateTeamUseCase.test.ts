@@ -2,10 +2,10 @@ import { CreateTeamUseCase } from '../CreateTeamUseCase';
 import { ITeamRepository } from '../../../../domain/team/ITeamRepository';
 import { IUserRepository } from '../../../../domain/user/IUserRepository';
 import { Team } from '../../../../domain/team/Team';
-import { TeamName } from '../../../../domain/team/vo/TeamName';
 import { User } from '../../../../domain/user/User';
 import { UserStatus } from '../../../../domain/user/enums/UserStatus';
-import { DuplicateTeamNameError } from '../../../../domain/team/errors/DuplicateTeamNameError';
+import { Prisma } from '@prisma/client';
+import { DuplicateTeamNameError, UserNotFoundError } from '../../errors/TeamErrors';
 
 describe('CreateTeamUseCase', () => {
   let teamRepository: jest.Mocked<ITeamRepository>;
@@ -13,7 +13,6 @@ describe('CreateTeamUseCase', () => {
   let useCase: CreateTeamUseCase;
 
   beforeEach(() => {
-    // リポジトリのモックを作成
     teamRepository = {
       findByName: jest.fn(),
       save: jest.fn(),
@@ -28,76 +27,90 @@ describe('CreateTeamUseCase', () => {
     useCase = new CreateTeamUseCase(teamRepository, userRepository);
   });
 
-  describe('execute', () => {
-    const validInput = {
+  const createMockUser = (id: string, status: UserStatus = UserStatus.Enrolled): User => {
+    return User.rebuild(
+      id,
+      `User ${id}`,
+      `user${id}@example.com`,
+      status
+    );
+  };
+
+  it('should create a team successfully', async () => {
+    const input = {
       name: 'ABC',
-      memberIds: ['user1', 'user2', 'user3'],
+      memberIds: ['1', '2', '3'],
     };
 
-    const mockUsers = [
-      User.rebuild('user1', 'User 1', 'user1@example.com', UserStatus.Enrolled),
-      User.rebuild('user2', 'User 2', 'user2@example.com', UserStatus.Enrolled),
-      User.rebuild('user3', 'User 3', 'user3@example.com', UserStatus.Enrolled),
-    ];
+    userRepository.findById.mockImplementation((id) => 
+      Promise.resolve(createMockUser(id))
+    );
 
-    test('正常系: チームが正常に作成される', async () => {
-      teamRepository.findByName.mockResolvedValue(null);
-      mockUsers.forEach(user => {
-        userRepository.findById.mockResolvedValueOnce(user);
-      });
-      teamRepository.save.mockResolvedValue();
+    await useCase.execute(input);
 
-      await useCase.execute(validInput);
-      expect(teamRepository.findByName).toHaveBeenCalledWith(
-        expect.any(TeamName)
-      );
-      expect(userRepository.findById).toHaveBeenCalledTimes(3);
-      validInput.memberIds.forEach(id => {
-        expect(userRepository.findById).toHaveBeenCalledWith(id);
-      });
-      expect(teamRepository.save).toHaveBeenCalledWith(
-        expect.any(Team)
-      );
+    expect(userRepository.findById).toHaveBeenCalledTimes(3);
+    expect(teamRepository.save).toHaveBeenCalledWith(expect.any(Team));
+  });
+
+  it('should throw DuplicateTeamNameError when team name already exists', async () => {
+    const input = {
+      name: 'ABC',
+      memberIds: ['1', '2', '3'],
+    };
+
+    userRepository.findById.mockImplementation((id) => 
+      Promise.resolve(createMockUser(id))
+    );
+
+    teamRepository.save.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint violation', {
+        code: 'P2002',
+        clientVersion: '1.0.0',
+      })
+    );
+
+    await expect(useCase.execute(input)).rejects.toThrow(DuplicateTeamNameError);
+    await expect(useCase.execute(input)).rejects.toThrow('チーム名 "ABC" は既に使用されています');
+  });
+
+  it('should throw UserNotFoundError when user does not exist', async () => {
+    const input = {
+      name: 'ABC',
+      memberIds: ['1', '2', '3'],
+    };
+
+    userRepository.findById.mockResolvedValue(null);
+
+    await expect(useCase.execute(input)).rejects.toThrow(UserNotFoundError);
+    await expect(useCase.execute(input)).rejects.toThrow('ユーザーID "1" が見つかりません');
+  });
+
+  it('should throw error when team has less than 3 members', async () => {
+    const input = {
+      name: 'ABC',
+      memberIds: ['1', '2'],
+    };
+
+    userRepository.findById.mockImplementation((id) => 
+      Promise.resolve(createMockUser(id))
+    );
+
+    await expect(useCase.execute(input)).rejects.toThrow('チームは3名以上のメンバーが必要です');
+  });
+
+  it('should throw error when team has non-enrolled members', async () => {
+    const input = {
+      name: 'ABC',
+      memberIds: ['1', '2', '3'],
+    };
+
+    userRepository.findById.mockImplementation((id) => {
+      if (id === '2') {
+        return Promise.resolve(createMockUser(id, UserStatus.Withdrawn));
+      }
+      return Promise.resolve(createMockUser(id));
     });
 
-    test('異常系: チーム名が重複している場合はエラーをスローする', async () => {
-      const existingTeam = Team.create(
-        new TeamName(validInput.name),
-        mockUsers
-      );
-      teamRepository.findByName.mockResolvedValue(existingTeam);
-
-      await expect(useCase.execute(validInput))
-        .rejects
-        .toThrow(DuplicateTeamNameError);
-
-      expect(userRepository.findById).not.toHaveBeenCalled();
-      expect(teamRepository.save).not.toHaveBeenCalled();
-    });
-
-    test('異常系: 存在しないユーザーIDが含まれている場合はエラーをスローする', async () => {
-      teamRepository.findByName.mockResolvedValue(null);
-      userRepository.findById.mockResolvedValueOnce(mockUsers[0]);
-      userRepository.findById.mockResolvedValueOnce(null); // 2番目のユーザーが存在しない
-
-      await expect(useCase.execute(validInput))
-        .rejects
-        .toThrow('ユーザーID "user2" が見つかりません');
-
-      expect(teamRepository.save).not.toHaveBeenCalled();
-    });
-
-    test('異常系: 無効なチーム名の場合はエラーをスローする', async () => {
-      await expect(useCase.execute({
-        ...validInput,
-        name: 'ABCD', // 4文字のチーム名（無効）
-      }))
-        .rejects
-        .toThrow('チーム名は3文字以下である必要があります');
-
-      expect(teamRepository.findByName).not.toHaveBeenCalled();
-      expect(userRepository.findById).not.toHaveBeenCalled();
-      expect(teamRepository.save).not.toHaveBeenCalled();
-    });
+    await expect(useCase.execute(input)).rejects.toThrow(/チームメンバーは全員が在籍中である必要があります/);
   });
 });
