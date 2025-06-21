@@ -1,3 +1,5 @@
+import { TeamNameLengthError, TeamNameRequiredError } from '../errors/TeamValidationError';
+
 export class TeamName {
   private readonly value: string;
 
@@ -8,16 +10,16 @@ export class TeamName {
 
   private validateTeamName(value: string): void {
     if (!value) {
-      throw new Error('チーム名は必須です');
+      throw new TeamNameRequiredError();
     }
 
     const trimmedValue = value.trim();
     if (!trimmedValue) {
-      throw new Error('チーム名は必須です');
+      throw new TeamNameRequiredError();
     }
 
     if (trimmedValue.length > 3) {
-      throw new Error('チーム名は3文字以下である必要があります');
+      throw new TeamNameLengthError(trimmedValue);
     }
   }
 

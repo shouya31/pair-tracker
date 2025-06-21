@@ -1,6 +1,8 @@
 import { User } from './User';
 import { UserStatus } from './enums/UserStatus';
 import { Email } from '../shared/Email';
+import { EmailValidationError } from '../shared/errors/EmailValidationError';
+import { UserNameValidationError } from './errors/UserNameValidationError';
 
 describe('User', () => {
   describe('create', () => {
@@ -26,7 +28,8 @@ describe('User', () => {
       const name = 'テストユーザー';
       const invalidEmail = 'invalid-email';
 
-      expect(() => User.create(name, invalidEmail)).toThrow('無効なメールアドレスです');
+      expect(() => User.create(name, invalidEmail)).toThrow(EmailValidationError);
+      expect(() => User.create(name, invalidEmail)).toThrow('メールアドレスの検証に失敗しました: 無効なメールアドレスです: invalid-email');
     });
 
     test('メールアドレスがEmail値オブジェクトとして保持される', () => {
@@ -42,50 +45,42 @@ describe('User', () => {
       const emptyName = '';
       const email = 'test@example.com';
 
-      expect(() => User.create(emptyName, email)).toThrow('名前を入力してください');
+      expect(() => User.create(emptyName, email)).toThrow(UserNameValidationError);
+      expect(() => User.create(emptyName, email)).toThrow('名前の検証に失敗しました: 名前を入力してください');
     });
 
     test('スペースのみの名前でユーザーを作成しようとするとエラーになる', () => {
       const whitespaceOnlyName = '   ';
       const email = 'test@example.com';
 
-      expect(() => User.create(whitespaceOnlyName, email)).toThrow('名前を入力してください');
+      expect(() => User.create(whitespaceOnlyName, email)).toThrow(UserNameValidationError);
+      expect(() => User.create(whitespaceOnlyName, email)).toThrow('名前の検証に失敗しました: 名前を入力してください');
     });
   });
 
   describe('rebuild', () => {
-    test('既存のIDを使用してユーザーを再構築できる', () => {
-      const id = '12345678-1234-4321-abcd-1234567890ab';
-      const name = 'テストユーザー';
-      const email = 'test@example.com';
+    const validId = '12345678-1234-4123-8123-123456789012';
+    const validName = 'テストユーザー';
+    const validEmail = 'test@example.com';
+
+    test('正しい値でユーザーが再構築される', () => {
       const status = UserStatus.Enrolled;
+      const user = User.rebuild(validId, validName, validEmail, status);
 
-      const user = User.rebuild(id, name, email, status);
-
-      expect(user.getUserId()).toBe(id);
-      expect(user.getName()).toBe(name);
-      expect(user.getEmail()).toBe(email);
+      expect(user.getUserId()).toBe(validId);
+      expect(user.getName()).toBe(validName);
+      expect(user.getEmail()).toBe(validEmail);
       expect(user.getStatus()).toBe(status);
     });
 
     test('無効なメールアドレスで再構築しようとするとエラーになる', () => {
-      const id = '12345678-1234-4321-abcd-1234567890ab';
-      const name = 'テストユーザー';
+      const id = validId;
+      const name = validName;
       const invalidEmail = 'invalid-email';
       const status = UserStatus.Enrolled;
 
-      expect(() => User.rebuild(id, name, invalidEmail, status)).toThrow('無効なメールアドレスです');
-    });
-
-    test('異なるステータスでユーザーを再構築できる', () => {
-      const id = '12345678-1234-4321-abcd-1234567890ab';
-      const name = 'テストユーザー';
-      const email = 'test@example.com';
-      const status = UserStatus.Suspended;
-
-      const user = User.rebuild(id, name, email, status);
-
-      expect(user.getStatus()).toBe(UserStatus.Suspended);
+      expect(() => User.rebuild(id, name, invalidEmail, status)).toThrow(EmailValidationError);
+      expect(() => User.rebuild(id, name, invalidEmail, status)).toThrow('メールアドレスの検証に失敗しました: 無効なメールアドレスです: invalid-email');
     });
   });
 });

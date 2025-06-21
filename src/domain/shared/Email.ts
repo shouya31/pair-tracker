@@ -1,7 +1,9 @@
+import { EmailValidationError } from './errors/EmailValidationError';
+
 export class Email {
   private constructor(private readonly value: string) {
     if (!Email.isValid(value)) {
-      throw new Error('無効なメールアドレスです');
+      throw EmailValidationError.invalid(value);
     }
   }
 

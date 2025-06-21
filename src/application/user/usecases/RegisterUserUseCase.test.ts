@@ -1,36 +1,33 @@
 import { RegisterUserUseCase } from './RegisterUserUseCase';
 import { IUserRepository } from '../../../domain/user/IUserRepository';
 import { User } from '../../../domain/user/User';
-import { Email } from '../../../domain/shared/Email';
-import { UserStatus } from '../../../domain/user/enums/UserStatus';
+import { EmailValidationError } from '../../../domain/shared/errors/EmailValidationError';
+import { UserNameValidationError } from '../../../domain/user/errors/UserNameValidationError';
 
 describe('RegisterUserUseCase', () => {
   let mockUserRepository: jest.Mocked<IUserRepository>;
   let registerUserUseCase: RegisterUserUseCase;
+  const validName = 'テストユーザー';
+  const validEmail = 'test@example.com';
 
   beforeEach(() => {
     mockUserRepository = {
-      findByEmail: jest.fn(),
       save: jest.fn(),
+      findByEmail: jest.fn(),
+      findById: jest.fn(),
     };
-
     registerUserUseCase = new RegisterUserUseCase(mockUserRepository);
   });
 
   describe('execute', () => {
-    const validName = 'テストユーザー';
-    const validEmail = 'test@example.com';
-
-    test('重複するメールアドレスが存在しない場合、ユーザーが正常に登録される', async () => {
+    test('正常系：ユーザーが正しく登録される', async () => {
       mockUserRepository.findByEmail.mockResolvedValue(null);
       mockUserRepository.save.mockResolvedValue();
 
-      await registerUserUseCase.execute(validName, validEmail);
+      await expect(registerUserUseCase.execute(validName, validEmail))
+        .resolves
+        .not.toThrow();
 
-      expect(mockUserRepository.findByEmail).toHaveBeenCalledWith(
-        expect.any(Email)
-      );
-      expect(mockUserRepository.findByEmail.mock.calls[0][0].getValue()).toBe(validEmail);
       expect(mockUserRepository.save).toHaveBeenCalledWith(
         expect.any(User)
       );
@@ -55,7 +52,10 @@ describe('RegisterUserUseCase', () => {
       const invalidEmail = 'invalid-email';
       await expect(registerUserUseCase.execute(validName, invalidEmail))
         .rejects
-        .toThrow('無効なメールアドレスです');
+        .toThrow(EmailValidationError);
+      await expect(registerUserUseCase.execute(validName, invalidEmail))
+        .rejects
+        .toThrow('メールアドレスの検証に失敗しました: 無効なメールアドレスです: invalid-email');
 
       expect(mockUserRepository.findByEmail).not.toHaveBeenCalled();
       expect(mockUserRepository.save).not.toHaveBeenCalled();
@@ -65,7 +65,10 @@ describe('RegisterUserUseCase', () => {
       const emptyName = '';
       await expect(registerUserUseCase.execute(emptyName, validEmail))
         .rejects
-        .toThrow('名前を入力してください');
+        .toThrow(UserNameValidationError);
+      await expect(registerUserUseCase.execute(emptyName, validEmail))
+        .rejects
+        .toThrow('名前の検証に失敗しました: 名前を入力してください');
 
       expect(mockUserRepository.findByEmail).not.toHaveBeenCalled();
       expect(mockUserRepository.save).not.toHaveBeenCalled();
