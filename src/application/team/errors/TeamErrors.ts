@@ -12,4 +12,11 @@ export class UserNotFoundError extends ApplicationError {
     super(`ユーザーID "${userId}" が見つかりません`);
     Object.setPrototypeOf(this, UserNotFoundError.prototype);
   }
+}
+
+export class TeamNotFoundError extends ApplicationError {
+  constructor(teamId: string) {
+    super(`チームID "${teamId}" が見つかりません`);
+    Object.setPrototypeOf(this, TeamNotFoundError.prototype);
+  }
 } 

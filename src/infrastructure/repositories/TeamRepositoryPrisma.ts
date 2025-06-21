@@ -5,15 +5,14 @@ import { Team } from '../../domain/team/Team';
 import { TeamName } from '../../domain/team/vo/TeamName';
 import { User } from '../../domain/user/User';
 import { UserStatus } from '../../domain/user/enums/UserStatus';
+import { Prisma } from '@prisma/client';
 
 export class TeamRepositoryPrisma implements ITeamRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async findByName(name: TeamName): Promise<Team | null> {
+  private async findTeamByCondition(where: Prisma.TeamWhereUniqueInput): Promise<Team | null> {
     const teamData = await this.prisma.team.findUnique({
-      where: {
-        name: name.getValue(),
-      },
+      where,
       include: {
         members: {
           include: {
@@ -45,6 +44,14 @@ export class TeamRepositoryPrisma implements ITeamRepository {
     } catch {
       return null;
     }
+  }
+
+  async findByName(name: TeamName): Promise<Team | null> {
+    return this.findTeamByCondition({ name: name.getValue() });
+  }
+
+  async findById(id: string): Promise<Team | null> {
+    return this.findTeamByCondition({ id });
   }
 
   async save(team: Team): Promise<void> {
