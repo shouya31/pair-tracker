@@ -1,3 +1,5 @@
+import { PairNameValidationError } from '../errors/PairNameValidationError';
+
 export class PairName {
   private readonly value: string;
 
@@ -8,11 +10,11 @@ export class PairName {
 
   private validatePairName(value: string): void {
     if (value.length !== 1) {
-      throw new Error('ペア名は1文字である必要があります');
+      throw PairNameValidationError.lengthError();
     }
 
     if (!/^[A-Z]$/.test(value)) {
-      throw new Error('ペア名は大文字のアルファベット1文字である必要があります');
+      throw PairNameValidationError.formatError();
     }
   }
 

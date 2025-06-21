@@ -1,4 +1,5 @@
 import { PairName } from '../PairName';
+import { PairNameValidationError } from '../../errors/PairNameValidationError';
 
 describe('PairName', () => {
   describe('正常系', () => {
@@ -24,26 +25,32 @@ describe('PairName', () => {
 
   describe('異常系', () => {
     test('空文字列の場合はエラーとなる', () => {
+      expect(() => new PairName('')).toThrow(PairNameValidationError);
       expect(() => new PairName('')).toThrow('ペア名は1文字である必要があります');
     });
 
     test('2文字以上の文字列の場合はエラーとなる', () => {
+      expect(() => new PairName('AA')).toThrow(PairNameValidationError);
       expect(() => new PairName('AA')).toThrow('ペア名は1文字である必要があります');
     });
 
     test('小文字のアルファベットの場合はエラーとなる', () => {
+      expect(() => new PairName('a')).toThrow(PairNameValidationError);
       expect(() => new PairName('a')).toThrow('ペア名は大文字のアルファベット1文字である必要があります');
     });
 
     test('数字の場合はエラーとなる', () => {
+      expect(() => new PairName('1')).toThrow(PairNameValidationError);
       expect(() => new PairName('1')).toThrow('ペア名は大文字のアルファベット1文字である必要があります');
     });
 
     test('特殊文字の場合はエラーとなる', () => {
+      expect(() => new PairName('@')).toThrow(PairNameValidationError);
       expect(() => new PairName('@')).toThrow('ペア名は大文字のアルファベット1文字である必要があります');
     });
 
     test('日本語文字の場合はエラーとなる', () => {
+      expect(() => new PairName('あ')).toThrow(PairNameValidationError);
       expect(() => new PairName('あ')).toThrow('ペア名は大文字のアルファベット1文字である必要があります');
     });
   });
