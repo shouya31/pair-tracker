@@ -7,16 +7,16 @@ export class DuplicateTeamNameError extends ApplicationError {
   }
 }
 
-export class UserNotFoundError extends Error {
+export class UserNotFoundError extends ApplicationError {
   constructor(userId: string) {
     super(`ユーザーID "${userId}" が見つかりません`);
-    this.name = 'UserNotFoundError';
+    Object.setPrototypeOf(this, UserNotFoundError.prototype);
   }
 }
 
-export class TeamNotFoundError extends Error {
+export class TeamNotFoundError extends ApplicationError {
   constructor(teamId: string) {
     super(`チームID "${teamId}" が見つかりません`);
-    this.name = 'TeamNotFoundError';
+    Object.setPrototypeOf(this, TeamNotFoundError.prototype);
   }
 } 
