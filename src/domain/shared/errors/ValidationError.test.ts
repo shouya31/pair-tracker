@@ -1,4 +1,4 @@
-import { StringLengthError } from '../ValidationError';
+import { StringLengthError } from './ValidationError';
 
 describe('ValidationError', () => {
   describe('StringLengthError', () => {

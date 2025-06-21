@@ -1,5 +1,5 @@
-import { Email } from '../Email';
-import { EmailValidationError } from '../errors/EmailValidationError';
+import { Email } from './Email';
+import { EmailValidationError } from './errors/EmailValidationError';
 
 describe('Email', () => {
   describe('create', () => {
