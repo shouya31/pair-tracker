@@ -61,9 +61,9 @@ describe('ユーザー登録API', () => {
 
       const responseBody = await response.json();
       expect(responseBody).toEqual({
-        error: '名前の検証に失敗しました: 名前を入力してください',
-        propertyName: '名前',
-        actualValue: undefined
+        error: 'Name is required',
+        propertyName: 'name',
+        actualValue: 'name'
       });
     });
 
@@ -83,9 +83,9 @@ describe('ユーザー登録API', () => {
 
       const responseBody = await response.json();
       expect(responseBody).toEqual({
-        error: 'メールアドレスの検証に失敗しました: RFC 5321に準拠した有効なメールアドレスを入力してください',
-        propertyName: 'メールアドレス',
-        actualValue: ''
+        error: 'Invalid email format',
+        propertyName: 'email',
+        actualValue: 'email'
       });
     });
 

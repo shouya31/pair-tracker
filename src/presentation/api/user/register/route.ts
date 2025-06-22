@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server';
 import { RegisterUserUseCase } from '@/application/user/usecases/RegisterUserUseCase';
 import { UserRepositoryPrisma } from '@/infrastructure/repositories/UserRepositoryPrisma';
 import { PrismaClient } from '@prisma/client';
-import { UserNameRequiredError, EmailFormatError, UserAlreadyExistsError } from '@/domain/user/errors/UserValidationError';
-import { ValidationError } from '@/domain/shared/errors/ValidationError';
+import { UserAlreadyExistsError } from '@/domain/user/errors/UserValidationError';
 import { DomainError } from '@/domain/shared/DomainError';
 import { UnexpectedError } from '@/domain/shared/errors/SystemError';
 import { ValidationErrorResponseDTO, ConflictErrorResponseDTO, SystemErrorResponseDTO } from '@/application/shared/dto/ResponseDTO';
+import { ZodError } from 'zod';
+import { registerUserSchema } from '@/lib/schemas/user-schema';
 
 export async function POST(request: Request) {
   const prisma = new PrismaClient();
@@ -15,17 +16,9 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { name, email } = body;
+    const validatedData = registerUserSchema.parse(body);
 
-    if (!name) {
-      throw new UserNameRequiredError();
-    }
-
-    if (!email) {
-      throw new EmailFormatError('');
-    }
-
-    const result = await registerUserUseCase.execute(name, email);
+    const result = await registerUserUseCase.execute(validatedData.name, validatedData.email);
 
     return NextResponse.json(
       { message: result.message },
@@ -35,11 +28,12 @@ export async function POST(request: Request) {
   } catch (error) {
     let responseDTO;
 
-    if (error instanceof ValidationError) {
+    if (error instanceof ZodError) {
+      const firstError = error.errors[0];
       responseDTO = new ValidationErrorResponseDTO(
-        error.message,
-        error.propertyName,
-        error.actualValue
+        firstError.message,
+        firstError.path.join('.'),
+        firstError.path[0].toString()
       );
     } else if (error instanceof UserAlreadyExistsError) {
       responseDTO = new ConflictErrorResponseDTO(error.message);
