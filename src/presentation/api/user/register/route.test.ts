@@ -1,0 +1,45 @@
+import { NextRequest } from 'next/server';
+import { POST } from './route';
+import { RegisterUserUseCase } from '@/application/user/usecases/RegisterUserUseCase';
+import { UserCreatedResponseDTO } from '@/application/user/responses/UserResponseDTO';
+
+jest.mock('@/application/user/usecases/RegisterUserUseCase');
+
+describe('ユーザー登録API', () => {
+  const mockExecute = jest.fn().mockResolvedValue(new UserCreatedResponseDTO());
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    (RegisterUserUseCase as jest.MockedClass<typeof RegisterUserUseCase>).mockImplementation(() => ({
+      execute: mockExecute
+    } as unknown as RegisterUserUseCase));
+  });
+
+  describe('正常系', () => {
+    test('有効な入力でユーザーが正常に登録される', async () => {
+      const requestBody = {
+        name: 'テストユーザー',
+        email: 'test@example.com'
+      };
+
+      const request = new NextRequest('http://localhost:3000/api/user/register', {
+        method: 'POST',
+        body: JSON.stringify(requestBody)
+      });
+
+      const response = await POST(request);
+      expect(response.status).toBe(201);
+
+      const responseBody = await response.json();
+      expect(responseBody).toEqual({
+        message: 'ユーザーが正常に登録されました'
+      });
+
+      expect(mockExecute).toHaveBeenCalledWith(
+        requestBody.name,
+        requestBody.email
+      );
+    });
+  });
+});
