@@ -11,9 +11,9 @@ model User {
   id        String     @id @default(uuid())
   email     String     @unique
   name      String
-  status    String     @default("Enrolled") // "Enrolled" | "Withdrawn" | "Suspended"
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+  status    String     @default("Enrolled")
   teams     TeamUser[]
   pairs     UserPair[]
 }
@@ -24,8 +24,8 @@ model Team {
   description String?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-  members     TeamUser[]
   pairs       Pair[]
+  members     TeamUser[]
 }
 
 model TeamUser {
@@ -35,8 +35,8 @@ model TeamUser {
   role      String   @default("MEMBER")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id])
   team      Team     @relation(fields: [teamId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, teamId])
 }
@@ -45,10 +45,10 @@ model Pair {
   id        String     @id @default(uuid())
   name      String
   teamId    String
-  team      Team       @relation(fields: [teamId], references: [id])
-  members   UserPair[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+  team      Team       @relation(fields: [teamId], references: [id])
+  members   UserPair[]
 
   @@unique([teamId, name])
 }
@@ -59,8 +59,8 @@ model UserPair {
   pairId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id])
   pair      Pair     @relation(fields: [pairId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, pairId])
   @@index([pairId])
