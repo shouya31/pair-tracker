@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { POST } from './route';
 import { RegisterUserUseCase } from '@/application/user/usecases/RegisterUserUseCase';
-import { UserCreatedResponseDTO } from '@/application/user/responses/UserResponseDTO';
+import { UserCreatedResponseDTO } from '@/application/user/dto/UserResponseDTO';
 
 jest.mock('@/application/user/usecases/RegisterUserUseCase');
 

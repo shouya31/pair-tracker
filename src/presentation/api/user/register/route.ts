@@ -6,6 +6,7 @@ import { UserNameRequiredError, EmailFormatError, UserAlreadyExistsError } from 
 import { ValidationError } from '@/domain/shared/errors/ValidationError';
 import { DomainError } from '@/domain/shared/DomainError';
 import { UnexpectedError } from '@/domain/shared/errors/SystemError';
+import { ValidationErrorResponseDTO, ConflictErrorResponseDTO, SystemErrorResponseDTO } from '@/application/shared/dto/ResponseDTO';
 
 export async function POST(request: Request) {
   const prisma = new PrismaClient();
@@ -28,40 +29,38 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       { message: result.message },
-      { status: 201 }
+      { status: result.getStatusCode() }
     );
 
   } catch (error) {
+    let responseDTO;
+
     if (error instanceof ValidationError) {
-      return NextResponse.json(
-        {
-          error: error.message,
-          propertyName: error.propertyName,
-          actualValue: error.actualValue
-        },
-        { status: 400 }
+      responseDTO = new ValidationErrorResponseDTO(
+        error.message,
+        error.propertyName,
+        error.actualValue
       );
+    } else if (error instanceof UserAlreadyExistsError) {
+      responseDTO = new ConflictErrorResponseDTO(error.message);
+    } else if (error instanceof DomainError) {
+      responseDTO = new ValidationErrorResponseDTO(error.message);
+    } else {
+      const unexpectedError = new UnexpectedError(error instanceof Error ? error : undefined);
+      responseDTO = new SystemErrorResponseDTO(unexpectedError.message);
     }
 
-    if (error instanceof UserAlreadyExistsError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 409 }
-      );
-    }
-
-    if (error instanceof DomainError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      );
-    }
-
-    const unexpectedError = new UnexpectedError(error instanceof Error ? error : undefined);
     return NextResponse.json(
-      { error: unexpectedError.message },
-      { status: 500 }
+      {
+        error: responseDTO.message,
+        ...(responseDTO instanceof ValidationErrorResponseDTO && {
+          propertyName: responseDTO.propertyName,
+          actualValue: responseDTO.actualValue
+        })
+      },
+      { status: responseDTO.getStatusCode() }
     );
+
   } finally {
     await prisma.$disconnect();
   }

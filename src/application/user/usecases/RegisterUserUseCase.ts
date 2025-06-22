@@ -3,7 +3,7 @@ import { User } from '../../../domain/user/User';
 import { Email } from '../../../domain/shared/Email';
 import { UserNameValidationError } from '../../../domain/user/errors/UserNameValidationError';
 import { UserAlreadyExistsError } from '../../../domain/user/errors/UserValidationError';
-import { UserCreatedResponseDTO } from '../responses/UserResponseDTO';
+import { UserCreatedResponseDTO } from '../dto/UserResponseDTO';
 
 export class RegisterUserUseCase {
   constructor(private readonly userRepository: IUserRepository) {}
