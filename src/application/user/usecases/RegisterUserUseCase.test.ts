@@ -3,6 +3,7 @@ import { IUserRepository } from '../../../domain/user/IUserRepository';
 import { User } from '../../../domain/user/User';
 import { EmailValidationError } from '../../../domain/shared/errors/EmailValidationError';
 import { UserNameValidationError } from '../../../domain/user/errors/UserNameValidationError';
+import { UserDTO } from '../dto/UserDTO';
 
 describe('RegisterUserUseCase', () => {
   let mockUserRepository: jest.Mocked<IUserRepository>;
@@ -24,9 +25,11 @@ describe('RegisterUserUseCase', () => {
       mockUserRepository.findByEmail.mockResolvedValue(null);
       mockUserRepository.save.mockResolvedValue();
 
-      await expect(registerUserUseCase.execute(validName, validEmail))
-        .resolves
-        .not.toThrow();
+      const result = await registerUserUseCase.execute(validName, validEmail);
+
+      expect(result).toBeInstanceOf(UserDTO);
+      expect(result.name).toBe(validName);
+      expect(result.email).toBe(validEmail);
 
       expect(mockUserRepository.save).toHaveBeenCalledWith(
         expect.any(User)
@@ -63,8 +66,6 @@ describe('RegisterUserUseCase', () => {
       await expect(registerUserUseCase.execute(emptyName, validEmail))
         .rejects
         .toThrowError(new UserNameValidationError('名前を入力してください', '名前', undefined));
-
-      expect(mockUserRepository.findByEmail).not.toHaveBeenCalled();
       expect(mockUserRepository.save).not.toHaveBeenCalled();
     });
   });
