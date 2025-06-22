@@ -5,6 +5,7 @@ import { UnexpectedError } from '@/domain/shared/errors/SystemError';
 import { ZodError } from 'zod';
 import { registerUserSchema } from '@/lib/schemas/user-schema';
 import { createRegisterUserUseCase } from '@/server/usecases';
+import type { UserResponse } from '@/presentation/types/responses/UserResponse';
 
 export async function POST(request: Request) {
   try {
@@ -14,10 +15,16 @@ export async function POST(request: Request) {
     const registerUserUseCase = createRegisterUserUseCase();
     const registeredUser = await registerUserUseCase.execute(validatedData.name, validatedData.email);
 
+    // DTOからプレゼンテーション層のレスポンス型に変換
+    const userResponse: UserResponse = {
+      name: registeredUser.name,
+      email: registeredUser.email
+    };
+
     return NextResponse.json(
       {
         message: 'ユーザーが正常に登録されました',
-        user: registeredUser
+        user: userResponse
       },
       { status: 201 }
     );
@@ -55,4 +62,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+} 
