@@ -1,22 +1,17 @@
 import { NextResponse } from 'next/server';
-import { RegisterUserUseCase } from '@/application/user/usecases/RegisterUserUseCase';
-import { UserRepositoryPrisma } from '@/infrastructure/repositories/UserRepositoryPrisma';
-import { PrismaClient } from '@prisma/client';
 import { UserAlreadyExistsError } from '@/domain/user/errors/UserValidationError';
 import { DomainError } from '@/domain/shared/DomainError';
 import { UnexpectedError } from '@/domain/shared/errors/SystemError';
 import { ZodError } from 'zod';
 import { registerUserSchema } from '@/lib/schemas/user-schema';
+import { createRegisterUserUseCase } from '@/server/usecases';
 
 export async function POST(request: Request) {
-  const prisma = new PrismaClient();
-  const userRepository = new UserRepositoryPrisma(prisma);
-  const registerUserUseCase = new RegisterUserUseCase(userRepository);
-
   try {
     const body = await request.json();
     const validatedData = registerUserSchema.parse(body);
 
+    const registerUserUseCase = createRegisterUserUseCase();
     const registeredUser = await registerUserUseCase.execute(validatedData.name, validatedData.email);
 
     return NextResponse.json(
@@ -59,8 +54,5 @@ export async function POST(request: Request) {
       { error: unexpectedError.message },
       { status: 500 }
     );
-
-  } finally {
-    await prisma.$disconnect();
   }
 }
