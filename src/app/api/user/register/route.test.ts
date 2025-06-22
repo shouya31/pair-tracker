@@ -63,7 +63,7 @@ describe('ユーザー登録API', () => {
 
       const responseBody = await response.json();
       expect(responseBody).toEqual({
-        error: 'Name is required',
+        error: '名前は必須です',
         field: 'name',
         value: 'name'
       });
@@ -85,7 +85,7 @@ describe('ユーザー登録API', () => {
 
       const responseBody = await response.json();
       expect(responseBody).toEqual({
-        error: 'Invalid email format',
+        error: 'メールアドレスは必須です',
         field: 'email',
         value: 'email'
       });
