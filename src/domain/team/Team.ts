@@ -1,44 +1,46 @@
 import { randomUUID } from 'crypto';
 import { TeamName } from './vo/TeamName';
-import { User } from '../user/User';
-import { UserStatus } from '../user/enums/UserStatus';
 import { Pair } from './Pair';
 import { PairName } from './vo/PairName';
 import { TeamDomainError } from './errors/TeamDomainError';
 import { TeamIdRequiredError, TeamIdFormatError } from './errors/TeamValidationError';
+import { AggregateRoot } from '../shared/AggregateRoot';
+import { TeamMembers } from './vo/TeamMembers';
+import { TeamCreated } from './events/TeamCreated';
+import { PairFormed } from './events/PairFormed';
 
-export class Team {
+export type TeamMember = {
+  id: string;
+  name?: string;
+};
+
+export class Team extends AggregateRoot {
   private readonly pairs: Pair[] = [];
 
   private constructor(
     private readonly teamId: string,
     private readonly name: TeamName,
-    private readonly members: User[],
+    private readonly members: TeamMembers,
   ) {
-    this.teamId = teamId;
-    this.name = name;
-    this.members = [...members];
+    super();
   }
 
-  public static create(name: TeamName, members: User[]): Team {
-    Team.validateMembers(members);
-    return new Team(randomUUID(), name, members);
+  public static create(name: TeamName, members: TeamMember[]): Team {
+    const teamMembers = TeamMembers.create(members);
+    const teamId = randomUUID();
+    const team = new Team(teamId, name, teamMembers);
+
+    team.addDomainEvent(new TeamCreated(
+      teamId,
+      name.getValue(),
+      teamMembers.getMemberIds()
+    ));
+
+    return team;
   }
 
-  private static validateMembers(members: User[]): void {
-    if (members.length < 3) {
-      throw TeamDomainError.memberCountError(members.length);
-    }
-
-    const nonEnrolledMembers = members.filter(
-      member => member.getStatus() !== UserStatus.Enrolled
-    );
-
-    if (nonEnrolledMembers.length > 0) {
-      throw TeamDomainError.memberStatusError(nonEnrolledMembers);
-    }
-  }
-
+  // TODO： Value Objectとして、TeamIdを定義する。
+  //  IDのフォーマット検証は、「Teamという概念」の責務というよりは、「TeamのIDという概念」の責務です。
   private static validateTeamId(teamId: string): void {
     if (!teamId) {
       throw new TeamIdRequiredError();
@@ -61,34 +63,48 @@ export class Team {
     return this.name;
   }
 
-  public getMembers(): User[] {
-    return [...this.members];
+  public getMembers(): TeamMember[] {
+    return this.members.getMembers();
   }
 
-  public static rebuild(teamId: string, name: TeamName, members: User[]): Team {
+  public getMemberIds(): string[] {
+    return this.members.getMemberIds();
+  }
+
+  public static rebuild(teamId: string, name: TeamName, members: TeamMember[]): Team {
     Team.validateTeamId(teamId);
-    Team.validateMembers(members);
-    return new Team(teamId, name, members);
+    const teamMembers = TeamMembers.create(members);
+    return new Team(teamId, name, teamMembers);
   }
 
-  public formPair(membersToPair: User[], pairName: PairName): void {
-    this.validatePairFormation(membersToPair);
-    const pair = new Pair(pairName, membersToPair);
+  public formPair(memberIds: string[], pairName: PairName): void {
+    this.validatePairFormation(memberIds);
+    const pair = new Pair(pairName, memberIds);
     this.pairs.push(pair);
+
+    this.addDomainEvent(new PairFormed(
+      this.teamId,
+      pairName.getValue(),
+      memberIds
+    ));
   }
 
-  private validatePairFormation(membersToPair: User[]): void {
-    if (membersToPair.length < 2 || membersToPair.length > 3) {
-      throw TeamDomainError.invalidPairMemberCount(membersToPair.length);
+  private validatePairFormation(memberIds: string[]): void {
+    // メンバーがチームに所属しているか確認
+    const notTeamMembers = memberIds.filter(id => !this.members.contains(id));
+    if (notTeamMembers.length > 0) {
+      throw new TeamDomainError(`以下のメンバーはチームに所属していません: ${notTeamMembers.join(', ')}`);
     }
 
-    const nonTeamMembers = membersToPair.filter(
-      member => !this.members.some(teamMember => teamMember.equals(member))
-    );
+    // ペアのメンバー数を確認
+    if (memberIds.length < 2 || memberIds.length > 3) {
+      throw new TeamDomainError('ペアのメンバー数は2人または3人である必要があります');
+    }
 
-    if (nonTeamMembers.length > 0) {
-      const nonTeamMemberNames = nonTeamMembers.map(member => member.getName());
-      throw TeamDomainError.nonTeamMemberError(nonTeamMemberNames);
+    // メンバーの重複を確認
+    const uniqueMembers = new Set(memberIds);
+    if (uniqueMembers.size !== memberIds.length) {
+      throw new TeamDomainError('同じメンバーを複数回指定することはできません');
     }
   }
 
