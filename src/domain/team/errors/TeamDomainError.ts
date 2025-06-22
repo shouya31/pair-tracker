@@ -10,24 +10,18 @@ export class TeamDomainError extends DomainError {
   }
 
   public static duplicateMemberError(): TeamDomainError {
-    return new TeamDomainError('同じメンバーを複数回追加することはできません。');
+    return new TeamDomainError('同じメンバーを複数回指定することはできません');
   }
 
-  public static invalidPairMemberCount(count: number): TeamDomainError {
-    return new TeamDomainError(
-      `ペアは2名または3名で構成する必要があります（現在: ${count}名）`
-    );
+  public static invalidPairMemberCount(): TeamDomainError {
+    return new TeamDomainError('ペアのメンバー数は2人または3人である必要があります');
   }
 
-  public static nonTeamMemberError(memberNames: string[]): TeamDomainError {
-    return new TeamDomainError(
-      `以下のメンバーはチームに所属していません：${memberNames.join(', ')}`
-    );
+  public static nonTeamMemberError(memberIds: string[]): TeamDomainError {
+    return new TeamDomainError(`以下のメンバーはチームに所属していません: ${memberIds.join(', ')}`);
   }
 
   public static duplicatePairMemberError(memberNames: string[]): TeamDomainError {
-    return new TeamDomainError(
-      `以下のメンバーは既に他のペアに所属しています：${memberNames.join(', ')}`
-    );
+    return new TeamDomainError(`以下のメンバーは既に他のペアに所属しています: ${memberNames.join(', ')}`);
   }
 }

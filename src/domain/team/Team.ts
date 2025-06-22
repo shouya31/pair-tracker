@@ -85,20 +85,20 @@ export class Team extends AggregateRoot {
   private validatePairMembersExist(memberIds: string[]): void {
     const notTeamMembers = memberIds.filter(id => !this.members.contains(id));
     if (notTeamMembers.length > 0) {
-      throw new TeamDomainError(`以下のメンバーはチームに所属していません: ${notTeamMembers.join(', ')}`);
+      throw TeamDomainError.nonTeamMemberError(notTeamMembers);
     }
   }
 
   private validatePairMemberCount(memberIds: string[]): void {
     if (memberIds.length < 2 || memberIds.length > 3) {
-      throw new TeamDomainError('ペアのメンバー数は2人または3人である必要があります');
+      throw TeamDomainError.invalidPairMemberCount();
     }
   }
 
   private validateNoDuplicateMembers(memberIds: string[]): void {
     const uniqueMembers = new Set(memberIds);
     if (uniqueMembers.size !== memberIds.length) {
-      throw new TeamDomainError('同じメンバーを複数回指定することはできません');
+      throw TeamDomainError.duplicateMemberError();
     }
   }
 

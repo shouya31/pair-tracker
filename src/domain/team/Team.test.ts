@@ -38,7 +38,7 @@ describe('Team', () => {
       expect(() => Team.create(validTeamName, members))
         .toThrow(TeamDomainError);
       expect(() => Team.create(validTeamName, members))
-        .toThrow('同じメンバーを複数回追加することはできません。');
+        .toThrow('同じメンバーを複数回指定することはできません');
     });
   });
 
