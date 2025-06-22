@@ -3,12 +3,7 @@ import { TeamNameLengthError, TeamNameRequiredError } from '../errors/TeamValida
 export class TeamName {
   private readonly value: string;
 
-  constructor(value: string) {
-    this.validateTeamName(value);
-    this.value = value.trim();
-  }
-
-  private validateTeamName(value: string): void {
+  public static create(value: string): TeamName {
     if (!value) {
       throw new TeamNameRequiredError();
     }
@@ -21,6 +16,12 @@ export class TeamName {
     if (trimmedValue.length > 3) {
       throw new TeamNameLengthError(trimmedValue);
     }
+
+    return new TeamName(trimmedValue);
+  }
+
+  private constructor(value: string) {
+    this.value = value;
   }
 
   public getValue(): string {
