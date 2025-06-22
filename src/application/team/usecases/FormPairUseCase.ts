@@ -1,7 +1,7 @@
 import { ITeamRepository } from '../../../domain/team/ITeamRepository';
 import { IUserRepository } from '../../../domain/user/IUserRepository';
+import { TeamNotFoundError, UserNotFoundError } from '../errors/TeamErrors';
 import { PairName } from '../../../domain/team/vo/PairName';
-import { UserNotFoundError, TeamNotFoundError } from '../errors/TeamErrors';
 
 export class FormPairUseCase {
   constructor(
@@ -10,26 +10,22 @@ export class FormPairUseCase {
   ) {}
 
   async execute(teamId: string, memberIds: string[], pairName: string): Promise<void> {
-    // チームの取得
     const team = await this.teamRepository.findById(teamId);
     if (!team) {
-      throw new TeamNotFoundError(teamId);
+      throw new TeamNotFoundError(`チームが見つかりません。チームID: ${teamId}`);
     }
 
-    // メンバーの取得
+    // TODO:ユーザーの存在チェックも含め、ペア結成に関する全ての検証をTeam Entityに任せる。
     const memberPromises = memberIds.map(async (id) => {
       const user = await this.userRepository.findById(id);
       if (!user) {
-        throw new UserNotFoundError(id);
+        throw new UserNotFoundError(`ユーザーが見つかりません。ユーザーID: ${id}`);
       }
-      return user;
     });
-    const members = await Promise.all(memberPromises);
+    await Promise.all(memberPromises);
 
-    // ペアの形成
-    team.formPair(members, new PairName(pairName));
+    team.formPair(memberIds, new PairName(pairName));
 
-    // 変更の永続化
     await this.teamRepository.save(team);
   }
-} 
+}
