@@ -5,7 +5,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { registerUserSchema } from '@/lib/schemas/user-schema';
 import type { RegisterUserInput } from '@/lib/schemas/user-schema';
 import type { UserResponse } from '@/presentation/types/responses/UserResponse';
+import type { RegisterResponse, RegisterSuccessResponse, RegisterErrorResponse } from '@/presentation/types/responses/RegisterResponse';
 import { useState } from 'react';
+
+const isSuccessResponse = (response: RegisterResponse): response is RegisterSuccessResponse => {
+  return 'user' in response;
+};
+
+const isErrorResponse = (response: RegisterResponse): response is RegisterErrorResponse => {
+  return 'error' in response;
+};
 
 export const RegisterForm = () => {
   const [registeredUser, setRegisteredUser] = useState<UserResponse | null>(null);
@@ -30,10 +39,10 @@ export const RegisterForm = () => {
         body: JSON.stringify(data),
       });
 
-      const responseData = await response.json();
+      const responseData = await response.json() as RegisterResponse;
 
-      if (!response.ok) {
-        if (responseData.field) {
+      if (!response.ok && isErrorResponse(responseData)) {
+        if ('field' in responseData) {
           setError(responseData.field as keyof RegisterUserInput, {
             type: 'server',
             message: responseData.error,
@@ -41,14 +50,16 @@ export const RegisterForm = () => {
         } else {
           setError('root', {
             type: 'server',
-            message: responseData.error || 'エラーが発生しました',
+            message: responseData.error,
           });
         }
         return;
       }
 
-      setRegisteredUser(responseData.user);
-      reset();
+      if (isSuccessResponse(responseData)) {
+        setRegisteredUser(responseData.user);
+        reset();
+      }
     } catch {
       setError('root', {
         type: 'server',
