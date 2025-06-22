@@ -53,14 +53,43 @@
 4.  **永続化 (`Infrastructure`層)**
     -   `IUserRepository`の`save`メソッドを介して、`UserRepositoryPrisma`が`User`エンティティをデータベースに保存する。
 
-5.  **ドメインイベント発行 (`Application`層)**
-    -   `EventBus`を介して`UserRegisteredEvent`を発行する。これにより、メール送信などの後続処理を疎結合に実行できる。
-
-6.  **レスポンス返却 (`Presentation`層)**
+5.  **レスポンス返却 (`Presentation`層)**
     -   `User`エンティティを`UserDTO`に変換する。
     -   ステータスコード`201 Created`と共に、`UserDTO`をJSON形式でクライアントに返す。
 
-## 異常系・代替フロー (Error Handling)
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Presentation as Presentation Layer<br>(API Route)
+    participant Application as Application Layer<br>(RegisterUserUseCase)
+    participant Domain as Domain Layer<br>(User, Email)
+    participant Infrastructure as Infrastructure Layer<br>(UserRepository)
+
+    Client->>+Presentation: POST /api/users (name, email)
+    Note over Presentation: 1. zodでリクエストを検証
+    Presentation->>+Application: execute(name, email)
+
+    Application->>+Domain: Email.create(email)
+    Note over Domain: メール形式を検証
+    Domain-->>-Application: Email Value Object
+
+    Application->>+Infrastructure: findByEmail(email)
+    Infrastructure-->>-Application: null (重複なし)
+
+    Application->>+Domain: User.create(name, email)
+    Note over Domain: Userエンティティを生成<br>(ID採番, status='在籍中')
+    Domain-->>-Application: User Entity
+
+    Application->>+Infrastructure: save(User Entity)
+    Note over Infrastructure: DBにユーザーを永続化
+    Infrastructure-->>-Application: void
+
+    Note over Application: User EntityをUserDTOに変換
+    Application-->>-Presentation: UserDTO
+    Presentation-->>-Client: 201 Created (UserDTO)
+```
+
+## 異常系・代替フロー
 
 | エラーケース | 発生レイヤー | エラー型 | `Presentation`層の挙動 |
 | :--- | :--- | :--- | :--- |
@@ -68,3 +97,34 @@
 | メールアドレスが既に登録済み | `Application` | `UserAlreadyExistsError` | `409 Conflict` とエラーメッセージを返す。 |
 | リクエストの形式が不正 | `Presentation` | `ZodError` | `400 Bad Request` とバリデーションエラーの詳細を返す。 |
 | その他の予期せぬエラー | - | `Error` | `500 Internal Server Error` として処理される。 |
+
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Presentation as Presentation Layer<br>(API Route)
+    participant Application as Application Layer<br>(RegisterUserUseCase)
+    participant Domain as Domain Layer<br>(User, Email)
+    participant Infrastructure as Infrastructure Layer<br>(UserRepository)
+
+    alt メールアドレス形式が不正な場合
+        Client->>+Presentation: POST /api/users (不正なemail)
+        Presentation->>+Application: execute(name, email)
+        Application->>+Domain: Email.create(email)
+        Domain-->>-Application: throw InvalidEmailFormatError
+        Application-->>-Presentation: throw InvalidEmailFormatError
+        Presentation-->>-Client: 400 Bad Request
+
+    else メールアドレスが重複している場合
+        Client->>+Presentation: POST /api/users (既存のemail)
+        Presentation->>+Application: execute(name, email)
+        Application->>+Domain: Email.create(email)
+        Domain-->>-Application: Email Value Object
+
+        Application->>+Infrastructure: findByEmail(email)
+        Infrastructure-->>-Application: User Entity (重複あり)
+
+        Application-->>-Presentation: throw UserAlreadyExistsError
+        Presentation-->>-Client: 409 Conflict
+    end
+```
