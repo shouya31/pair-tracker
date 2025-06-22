@@ -1,13 +1,14 @@
 import { NextRequest } from 'next/server';
 import { POST } from './route';
 import { RegisterUserUseCase } from '@/application/user/usecases/RegisterUserUseCase';
-import { UserCreatedResponseDTO } from '@/application/user/dto/UserResponseDTO';
+import { UserDTO } from '@/application/user/dto/UserDTO';
 import { UserAlreadyExistsError } from '@/domain/user/errors/UserValidationError';
 
 jest.mock('@/application/user/usecases/RegisterUserUseCase');
 
 describe('ユーザー登録API', () => {
-  const mockExecute = jest.fn().mockResolvedValue(new UserCreatedResponseDTO());
+  const mockUser = new UserDTO('テストユーザー', 'test@example.com');
+  const mockExecute = jest.fn().mockResolvedValue(mockUser);
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -34,7 +35,8 @@ describe('ユーザー登録API', () => {
 
       const responseBody = await response.json();
       expect(responseBody).toEqual({
-        message: 'ユーザーが正常に登録されました'
+        message: 'ユーザーが正常に登録されました',
+        user: mockUser
       });
 
       expect(mockExecute).toHaveBeenCalledWith(
@@ -62,8 +64,8 @@ describe('ユーザー登録API', () => {
       const responseBody = await response.json();
       expect(responseBody).toEqual({
         error: 'Name is required',
-        propertyName: 'name',
-        actualValue: 'name'
+        field: 'name',
+        value: 'name'
       });
     });
 
@@ -84,8 +86,8 @@ describe('ユーザー登録API', () => {
       const responseBody = await response.json();
       expect(responseBody).toEqual({
         error: 'Invalid email format',
-        propertyName: 'email',
-        actualValue: 'email'
+        field: 'email',
+        value: 'email'
       });
     });
 
