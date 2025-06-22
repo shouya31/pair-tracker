@@ -1,4 +1,4 @@
-# ストーリー：ユーザー新規登録
+# ストーリー：ユーザーを新規登録できる
 
 ## サマリー
 
@@ -39,7 +39,7 @@
 
 1.  **リクエスト受信 (`Presentation`層)**
     -   クライアントから `POST /api/users` へ名前とメールアドレスを含んだリクエストが送信される。
-    -   `zod`スキーマ (`registerUserSchema`) を用いて、リクエストボディの型と基本的な制約（必須項目など）を検証する。
+    -   `zod`スキーマ (`registerUserSchema`) を用いて、リクエストボディの型とnameとemailに関する制約（必須項目など）を検証する。
 
 2.  **ユースケース実行 (`Application`層)**
     -   `RegisterUserUseCase`の`execute`メソッドが呼び出される。
