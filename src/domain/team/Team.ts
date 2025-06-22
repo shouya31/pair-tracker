@@ -8,6 +8,7 @@ import { AggregateRoot } from '../shared/AggregateRoot';
 import { TeamMembers } from './vo/TeamMembers';
 import { TeamCreated } from './events/TeamCreated';
 import { PairFormed } from './events/PairFormed';
+import { PairFormationRequested } from './events/PairFormationRequested';
 
 export type TeamMember = {
   id: string;
@@ -16,6 +17,7 @@ export type TeamMember = {
 
 export class Team extends AggregateRoot {
   private readonly pairs: Pair[] = [];
+  private pendingPairFormation: { memberIds: string[], pairName: PairName } | null = null;
 
   private constructor(
     private readonly teamId: string,
@@ -37,6 +39,67 @@ export class Team extends AggregateRoot {
     ));
 
     return team;
+  }
+
+  public requestPairFormation(memberIds: string[], pairName: PairName): void {
+    this.validatePairMembersExist(memberIds);
+    this.validatePairMemberCount(memberIds);
+    this.validateNoDuplicateMembers(memberIds);
+    this.pendingPairFormation = { memberIds, pairName };
+    this.addDomainEvent(new PairFormationRequested(
+      this.teamId,
+      memberIds
+    ));
+  }
+
+  public confirmPairFormation(approvedMemberIds: string[]): void {
+    if (!this.pendingPairFormation) {
+      throw new TeamDomainError('ペア形成リクエストが存在しません');
+    }
+
+    const { memberIds, pairName } = this.pendingPairFormation;
+
+    if (!this.areArraysEqual(memberIds, approvedMemberIds)) {
+      throw new TeamDomainError('承認されたメンバーが、リクエストされたメンバーと一致しません');
+    }
+
+    const pair = new Pair(pairName, memberIds);
+    this.pairs.push(pair);
+
+    this.addDomainEvent(new PairFormed(
+      this.teamId,
+      pairName.getValue(),
+      memberIds
+    ));
+
+    this.pendingPairFormation = null;
+  }
+
+  private areArraysEqual(arr1: string[], arr2: string[]): boolean {
+    if (arr1.length !== arr2.length) return false;
+    const sorted1 = [...arr1].sort();
+    const sorted2 = [...arr2].sort();
+    return sorted1.every((value, index) => value === sorted2[index]);
+  }
+
+  private validatePairMembersExist(memberIds: string[]): void {
+    const notTeamMembers = memberIds.filter(id => !this.members.contains(id));
+    if (notTeamMembers.length > 0) {
+      throw new TeamDomainError(`以下のメンバーはチームに所属していません: ${notTeamMembers.join(', ')}`);
+    }
+  }
+
+  private validatePairMemberCount(memberIds: string[]): void {
+    if (memberIds.length < 2 || memberIds.length > 3) {
+      throw new TeamDomainError('ペアのメンバー数は2人または3人である必要があります');
+    }
+  }
+
+  private validateNoDuplicateMembers(memberIds: string[]): void {
+    const uniqueMembers = new Set(memberIds);
+    if (uniqueMembers.size !== memberIds.length) {
+      throw new TeamDomainError('同じメンバーを複数回指定することはできません');
+    }
   }
 
   // TODO： Value Objectとして、TeamIdを定義する。
@@ -75,37 +138,6 @@ export class Team extends AggregateRoot {
     Team.validateTeamId(teamId);
     const teamMembers = TeamMembers.create(members);
     return new Team(teamId, name, teamMembers);
-  }
-
-  public formPair(memberIds: string[], pairName: PairName): void {
-    this.validatePairFormation(memberIds);
-    const pair = new Pair(pairName, memberIds);
-    this.pairs.push(pair);
-
-    this.addDomainEvent(new PairFormed(
-      this.teamId,
-      pairName.getValue(),
-      memberIds
-    ));
-  }
-
-  private validatePairFormation(memberIds: string[]): void {
-    // メンバーがチームに所属しているか確認
-    const notTeamMembers = memberIds.filter(id => !this.members.contains(id));
-    if (notTeamMembers.length > 0) {
-      throw new TeamDomainError(`以下のメンバーはチームに所属していません: ${notTeamMembers.join(', ')}`);
-    }
-
-    // ペアのメンバー数を確認
-    if (memberIds.length < 2 || memberIds.length > 3) {
-      throw new TeamDomainError('ペアのメンバー数は2人または3人である必要があります');
-    }
-
-    // メンバーの重複を確認
-    const uniqueMembers = new Set(memberIds);
-    if (uniqueMembers.size !== memberIds.length) {
-      throw new TeamDomainError('同じメンバーを複数回指定することはできません');
-    }
   }
 
   public getPairs(): Pair[] {

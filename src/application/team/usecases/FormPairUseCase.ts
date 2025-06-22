@@ -1,7 +1,14 @@
 import { ITeamRepository } from '../../../domain/team/ITeamRepository';
 import { IUserRepository } from '../../../domain/user/IUserRepository';
-import { TeamNotFoundError, UserNotFoundError } from '../errors/TeamErrors';
 import { PairName } from '../../../domain/team/vo/PairName';
+import { TeamNotFoundError } from '../errors/TeamErrors';
+import { UserStatus } from '../../../domain/user/enums/UserStatus';
+
+interface FormPairUseCaseInput {
+  teamId: string;
+  memberIds: string[];
+  pairName: string;
+}
 
 export class FormPairUseCase {
   constructor(
@@ -9,23 +16,33 @@ export class FormPairUseCase {
     private readonly userRepository: IUserRepository,
   ) {}
 
-  async execute(teamId: string, memberIds: string[], pairName: string): Promise<void> {
-    const team = await this.teamRepository.findById(teamId);
+  async execute(input: FormPairUseCaseInput): Promise<void> {
+    // 1. チームを取得
+    const team = await this.teamRepository.findById(input.teamId);
     if (!team) {
-      throw new TeamNotFoundError(`チームが見つかりません。チームID: ${teamId}`);
+      throw new TeamNotFoundError(input.teamId);
     }
 
-    // TODO:ユーザーの存在チェックも含め、ペア結成に関する全ての検証をTeam Entityに任せる。
-    const memberPromises = memberIds.map(async (id) => {
-      const user = await this.userRepository.findById(id);
-      if (!user) {
-        throw new UserNotFoundError(`ユーザーが見つかりません。ユーザーID: ${id}`);
-      }
-    });
-    await Promise.all(memberPromises);
+    // 2. ペア形成をリクエスト
+    team.requestPairFormation(input.memberIds, new PairName(input.pairName));
 
-    team.formPair(memberIds, new PairName(pairName));
+    // 3. メンバーのステータスを確認
+    const users = await Promise.all(
+      input.memberIds.map(id => this.userRepository.findById(id))
+    );
 
+    const invalidUsers = users.filter(user => user?.getStatus() !== UserStatus.Enrolled);
+    if (invalidUsers.length > 0) {
+      const invalidUserNames = invalidUsers
+        .map(user => `${user?.getName()}(${user?.getStatus()})`)
+        .join(', ');
+      throw new Error(`在籍中でないメンバーはペアに所属できません: ${invalidUserNames}`);
+    }
+
+    // 4. ペア形成を確認
+    team.confirmPairFormation(input.memberIds);
+
+    // 5. 変更を永続化
     await this.teamRepository.save(team);
   }
 }

@@ -2,86 +2,121 @@ import { FormPairUseCase } from './FormPairUseCase';
 import { ITeamRepository } from '../../../domain/team/ITeamRepository';
 import { IUserRepository } from '../../../domain/user/IUserRepository';
 import { Team } from '../../../domain/team/Team';
-import { User } from '../../../domain/user/User';
 import { TeamName } from '../../../domain/team/vo/TeamName';
+import { User } from '../../../domain/user/User';
 import { UserStatus } from '../../../domain/user/enums/UserStatus';
-import { TeamNotFoundError, UserNotFoundError } from '../errors/TeamErrors';
+import { TeamNotFoundError } from '../errors/TeamErrors';
 
 describe('FormPairUseCase', () => {
   let teamRepository: jest.Mocked<ITeamRepository>;
   let userRepository: jest.Mocked<IUserRepository>;
   let useCase: FormPairUseCase;
-  let mockTeam: Team;
-  let mockUsers: User[];
-
-  const TEAM_ID = '123e4567-e89b-42d3-a456-556642440000';
-  const USER_IDS = [
-    '123e4567-e89b-42d3-a456-556642440001',
-    '123e4567-e89b-42d3-a456-556642440002',
-    '123e4567-e89b-42d3-a456-556642440003',
-  ];
 
   beforeEach(() => {
-    // モックの初期化
     teamRepository = {
       findById: jest.fn(),
       findByName: jest.fn(),
       save: jest.fn(),
-    } as jest.Mocked<ITeamRepository>;
+    } as unknown as jest.Mocked<ITeamRepository>;
 
     userRepository = {
       findById: jest.fn(),
       findByEmail: jest.fn(),
+      findByIds: jest.fn(),
       save: jest.fn(),
-    } as jest.Mocked<IUserRepository>;
-
-    // テスト用のユーザーを作成
-    mockUsers = USER_IDS.map(id => 
-      User.rebuild(id, `User ${id}`, `user${id}@example.com`, UserStatus.Enrolled)
-    );
-
-    // テスト用のチームを作成
-    mockTeam = Team.rebuild(
-      TEAM_ID,
-      new TeamName('ABC'),
-      mockUsers.map(user => ({
-        id: user.getUserId(),
-        name: user.getName(),
-      }))
-    );
+    } as unknown as jest.Mocked<IUserRepository>;
 
     useCase = new FormPairUseCase(teamRepository, userRepository);
   });
 
-  it('正常にペアが作成される', async () => {
-    teamRepository.findById.mockResolvedValue(mockTeam);
-    userRepository.findById.mockImplementation((id) =>
-      Promise.resolve(mockUsers.find(u => u.getUserId() === id) || null)
+  const setupValidTeam = () => {
+    const team = Team.create(
+      TeamName.create('A1'),
+      [
+        { id: '1', name: 'User 1' },
+        { id: '2', name: 'User 2' },
+        { id: '3', name: 'User 3' },
+      ]
     );
+    teamRepository.findById.mockResolvedValue(team);
+    return team;
+  };
 
-    await useCase.execute(TEAM_ID, [USER_IDS[0], USER_IDS[1]], 'A');
+  const setupValidUsers = () => {
+    const user1 = {
+      getUserId: () => '1',
+      getName: () => 'User 1',
+      getStatus: () => UserStatus.Enrolled,
+    } as jest.Mocked<User>;
 
-    expect(teamRepository.save).toHaveBeenCalled();
+    const user2 = {
+      getUserId: () => '2',
+      getName: () => 'User 2',
+      getStatus: () => UserStatus.Enrolled,
+    } as jest.Mocked<User>;
+
+    userRepository.findById.mockImplementation(async (id) => {
+      if (id === '1') return user1;
+      if (id === '2') return user2;
+      return null;
+    });
+
+    return [user1, user2];
+  };
+
+  it('should form a pair when all conditions are met', async () => {
+    const team = setupValidTeam();
+    setupValidUsers();
+
+    await useCase.execute({
+      teamId: 'team-1',
+      memberIds: ['1', '2'],
+      pairName: 'A',
+    });
+
+    expect(teamRepository.save).toHaveBeenCalledWith(team);
+    expect(team.getPairs()).toHaveLength(1);
   });
 
-  it('存在しないチームの場合はTeamNotFoundErrorを投げる', async () => {
-    const nonExistentTeamId = '12345678-1234-4123-8123-123456789xyz';
+  it('should throw TeamNotFoundError when team does not exist', async () => {
     teamRepository.findById.mockResolvedValue(null);
 
-    await expect(
-      useCase.execute(nonExistentTeamId, [USER_IDS[0], USER_IDS[1]], 'A')
-    ).rejects.toThrow(`チームが見つかりません。チームID: ${nonExistentTeamId}`);
+    await expect(useCase.execute({
+      teamId: 'non-existent-team',
+      memberIds: ['1', '2'],
+      pairName: 'A',
+    })).rejects.toThrow(TeamNotFoundError);
+
+    expect(teamRepository.save).not.toHaveBeenCalled();
   });
 
-  it('存在しないユーザーの場合はUserNotFoundErrorを投げる', async () => {
-    const nonExistentUserId = '12345678-1234-4123-8123-123456789xyz';
-    teamRepository.findById.mockResolvedValue(mockTeam);
-    userRepository.findById.mockImplementation((id) =>
-      Promise.resolve(mockUsers.find(u => u.getUserId() === id) || null)
-    );
+  it('should throw error when user is not enrolled', async () => {
+    setupValidTeam();
 
-    await expect(
-      useCase.execute(TEAM_ID, [mockUsers[0].getUserId(), nonExistentUserId], 'A')
-    ).rejects.toThrow(`ユーザーが見つかりません。ユーザーID: ${nonExistentUserId}`);
+    const withdrawnUser = {
+      getUserId: () => '1',
+      getName: () => 'User 1',
+      getStatus: () => UserStatus.Withdrawn,
+    } as jest.Mocked<User>;
+
+    const enrolledUser = {
+      getUserId: () => '2',
+      getName: () => 'User 2',
+      getStatus: () => UserStatus.Enrolled,
+    } as jest.Mocked<User>;
+
+    userRepository.findById.mockImplementation(async (id) => {
+      if (id === '1') return withdrawnUser;
+      if (id === '2') return enrolledUser;
+      return null;
+    });
+
+    await expect(useCase.execute({
+      teamId: 'team-1',
+      memberIds: ['1', '2'],
+      pairName: 'A',
+    })).rejects.toThrow('在籍中でないメンバーはペアに所属できません');
+
+    expect(teamRepository.save).not.toHaveBeenCalled();
   });
 }); 

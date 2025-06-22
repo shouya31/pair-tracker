@@ -1,15 +1,12 @@
 import { TeamDomainError } from '../errors/TeamDomainError';
+import { TeamMember } from '../Team';
 
-type TeamMember = {
-  id: string;
-  name?: string;
-};
 export class TeamMembers {
   private constructor(private readonly members: TeamMember[]) {}
 
   public static create(members: TeamMember[]): TeamMembers {
     TeamMembers.validateMembers(members);
-    return new TeamMembers([...members]);
+    return new TeamMembers(members);
   }
 
   private static validateMembers(members: TeamMember[]): void {
@@ -28,11 +25,15 @@ export class TeamMembers {
   }
 
   public getMemberIds(): string[] {
-    return this.members.map(m => m.id);
+    return this.members.map(member => member.id);
   }
 
   public contains(memberId: string): boolean {
-    return this.members.some(m => m.id === memberId);
+    return this.members.some(member => member.id === memberId);
+  }
+
+  public getMemberById(memberId: string): TeamMember | undefined {
+    return this.members.find(member => member.id === memberId);
   }
 
   public count(): number {
