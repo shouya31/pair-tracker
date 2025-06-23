@@ -1,18 +1,14 @@
 import { PrismaClient } from '@prisma/client';
-import { randomUUID } from 'crypto';
-import { ITeamRepository } from '../../domain/team/ITeamRepository';
 import { Team } from '../../domain/team/Team';
+import { ITeamRepository } from '../../domain/team/ITeamRepository';
 import { TeamName } from '../../domain/team/vo/TeamName';
-import { User } from '../../domain/user/User';
-import { UserStatus } from '../../domain/user/enums/UserStatus';
-import { Prisma } from '@prisma/client';
 
 export class TeamRepositoryPrisma implements ITeamRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  private async findTeamByCondition(where: Prisma.TeamWhereUniqueInput): Promise<Team | null> {
-    const teamData = await this.prisma.team.findUnique({
-      where,
+  async findByName(name: TeamName): Promise<Team | null> {
+    const team = await this.prisma.team.findUnique({
+      where: { name: name.getValue() },
       include: {
         members: {
           include: {
@@ -22,99 +18,93 @@ export class TeamRepositoryPrisma implements ITeamRepository {
       },
     });
 
-    if (!teamData) {
+    if (!team) {
       return null;
     }
 
-    const members = teamData.members.map(member =>
-      User.rebuild(
-        member.user.id,
-        member.user.name,
-        member.user.email,
-        UserStatus.Enrolled,
-      ),
+    const members = team.members.map(member => ({
+      id: member.user.id,
+      name: member.user.name,
+      status: 'Enrolled', // TODO: ユーザーのステータスをDBから取得する実装に修正
+    }));
+
+    return Team.rebuild(
+      team.id,
+      name,
+      members
     );
-
-    if (members.length < 3) {
-      return null;
-    }
-
-    try {
-      return Team.rebuild(teamData.id, new TeamName(teamData.name), members);
-    } catch {
-      return null;
-    }
-  }
-
-  async findByName(name: TeamName): Promise<Team | null> {
-    return this.findTeamByCondition({ name: name.getValue() });
   }
 
   async findById(id: string): Promise<Team | null> {
-    return this.findTeamByCondition({ id });
+    const team = await this.prisma.team.findUnique({
+      where: { id },
+      include: {
+        members: {
+          include: {
+            user: true,
+          },
+        },
+      },
+    });
+
+    if (!team) {
+      return null;
+    }
+
+    const members = team.members.map(member => ({
+      id: member.user.id,
+      name: member.user.name,
+      status: 'Enrolled', // TODO: ユーザーのステータスをDBから取得する実装に修正
+    }));
+
+    return Team.rebuild(
+      team.id,
+      TeamName.create(team.name),
+      members
+    );
   }
 
   async save(team: Team): Promise<void> {
     const teamId = team.getTeamId();
     const teamName = team.getName();
     const members = team.getMembers();
-    const pairs = team.getPairs();
 
-    await this.prisma.$transaction(async tx => {
-      // チームの保存・更新
-      await tx.team.upsert({
-        where: { id: teamId },
-        create: {
-          id: teamId,
-          name: teamName,
-          members: {
-            create: members.map(member => ({
-              id: randomUUID(),
-              userId: member.getUserId(),
-              role: 'MEMBER',
-            })),
-          },
-        },
-        update: {
-          name: teamName,
-          members: {
-            deleteMany: {},
-            create: members.map(member => ({
-              id: randomUUID(),
-              userId: member.getUserId(),
-              role: 'MEMBER',
-            })),
-          },
-        },
-      });
-
-      // 既存のペアのメンバーを削除
-      await tx.userPair.deleteMany({
-        where: { pair: { teamId } },
-      });
-
-      // 既存のペアを削除
-      await tx.pair.deleteMany({
-        where: { teamId },
-      });
-
-      // 新しいペアを作成
-      for (const pair of pairs) {
-        const pairId = randomUUID();
-        await tx.pair.create({
-          data: {
-            id: pairId,
-            name: pair.getName().getValue(),
-            teamId: teamId,
-            members: {
-              create: pair.getMembers().map(member => ({
-                id: randomUUID(),
-                userId: member.getUserId(),
-              })),
-            },
-          },
-        });
-      }
+    await this.prisma.team.upsert({
+      where: { id: teamId },
+      create: {
+        id: teamId,
+        name: teamName,
+      },
+      update: {
+        name: teamName,
+      },
     });
+
+    const currentMembers = await this.prisma.teamUser.findMany({
+      where: { teamId },
+      select: { userId: true },
+    });
+    const currentMemberIds = new Set(currentMembers.map(m => m.userId));
+
+    const newMemberIds = members.map(m => m.id);
+    const membersToAdd = newMemberIds.filter(id => !currentMemberIds.has(id));
+    const membersToRemove = Array.from(currentMemberIds).filter(id => !newMemberIds.includes(id));
+
+    await this.prisma.$transaction([
+      this.prisma.teamUser.deleteMany({
+        where: {
+          teamId,
+          userId: { in: membersToRemove },
+        },
+      }),
+      this.prisma.teamUser.createMany({
+        data: membersToAdd.map(userId => ({
+          teamId,
+          userId,
+          role: 'MEMBER',
+        })),
+        skipDuplicates: true,
+      }),
+    ]);
   }
 }

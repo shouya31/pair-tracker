@@ -22,7 +22,7 @@ export class UserRepositoryPrisma implements IUserRepository {
       user.id,
       user.name,
       user.email,
-      UserStatus.Enrolled
+      user.status as UserStatus
     );
   }
 
@@ -41,7 +41,7 @@ export class UserRepositoryPrisma implements IUserRepository {
       user.id,
       user.name,
       user.email,
-      UserStatus.Enrolled
+      user.status as UserStatus
     );
   }
 
@@ -54,14 +54,33 @@ export class UserRepositoryPrisma implements IUserRepository {
         id: user.getUserId(),
         email: user.getEmail(),
         name: user.getName(),
+        status: user.getStatus(),
         createdAt: new Date(),
         updatedAt: new Date(),
       },
       update: {
         email: user.getEmail(),
         name: user.getName(),
+        status: user.getStatus(),
         updatedAt: new Date(),
       },
     });
   }
-} 
+
+  async findByIds(ids: string[]): Promise<User[]> {
+    const users = await this.prisma.user.findMany({
+      where: {
+        id: {
+          in: ids
+        }
+      }
+    });
+
+    return users.map(user => User.rebuild(
+      user.id,
+      user.name,
+      user.email,
+      user.status as UserStatus
+    ));
+  }
+}

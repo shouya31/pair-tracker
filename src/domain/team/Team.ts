@@ -1,44 +1,109 @@
 import { randomUUID } from 'crypto';
 import { TeamName } from './vo/TeamName';
-import { User } from '../user/User';
-import { UserStatus } from '../user/enums/UserStatus';
 import { Pair } from './Pair';
 import { PairName } from './vo/PairName';
 import { TeamDomainError } from './errors/TeamDomainError';
 import { TeamIdRequiredError, TeamIdFormatError } from './errors/TeamValidationError';
+import { AggregateRoot } from '../shared/AggregateRoot';
+import { TeamMembers } from './vo/TeamMembers';
+import { TeamCreated } from './events/TeamCreated';
+import { PairFormed } from './events/PairFormed';
+import { PairFormationRequested } from './events/PairFormationRequested';
 
-export class Team {
+export type TeamMember = {
+  id: string;
+  name?: string;
+};
+
+export class Team extends AggregateRoot {
   private readonly pairs: Pair[] = [];
+  private pendingPairFormation: { memberIds: string[], pairName: PairName } | null = null;
 
   private constructor(
     private readonly teamId: string,
     private readonly name: TeamName,
-    private readonly members: User[],
+    private readonly members: TeamMembers,
   ) {
-    this.teamId = teamId;
-    this.name = name;
-    this.members = [...members];
+    super();
   }
 
-  public static create(name: TeamName, members: User[]): Team {
-    Team.validateMembers(members);
-    return new Team(randomUUID(), name, members);
+  public static create(name: TeamName, members: TeamMember[]): Team {
+    const teamMembers = TeamMembers.create(members);
+    const teamId = randomUUID();
+    const team = new Team(teamId, name, teamMembers);
+
+    team.addDomainEvent(new TeamCreated(
+      teamId,
+      name.getValue(),
+      teamMembers.getMemberIds()
+    ));
+
+    return team;
   }
 
-  private static validateMembers(members: User[]): void {
-    if (members.length < 3) {
-      throw TeamDomainError.memberCountError(members.length);
+  public requestPairFormation(memberIds: string[], pairName: PairName): void {
+    this.validatePairMembersExist(memberIds);
+    this.validatePairMemberCount(memberIds);
+    this.validateNoDuplicateMembers(memberIds);
+    this.pendingPairFormation = { memberIds, pairName };
+    this.addDomainEvent(new PairFormationRequested(
+      this.teamId,
+      memberIds
+    ));
+  }
+
+  public confirmPairFormation(approvedMemberIds: string[]): void {
+    if (!this.pendingPairFormation) {
+      throw new TeamDomainError('ペア形成リクエストが存在しません');
     }
 
-    const nonEnrolledMembers = members.filter(
-      member => member.getStatus() !== UserStatus.Enrolled
-    );
+    const { memberIds, pairName } = this.pendingPairFormation;
 
-    if (nonEnrolledMembers.length > 0) {
-      throw TeamDomainError.memberStatusError(nonEnrolledMembers);
+    if (!this.areArraysEqual(memberIds, approvedMemberIds)) {
+      throw new TeamDomainError('承認されたメンバーが、リクエストされたメンバーと一致しません');
+    }
+
+    const pair = new Pair(pairName, memberIds);
+    this.pairs.push(pair);
+
+    this.addDomainEvent(new PairFormed(
+      this.teamId,
+      pairName.getValue(),
+      memberIds
+    ));
+
+    this.pendingPairFormation = null;
+  }
+
+  private areArraysEqual(arr1: string[], arr2: string[]): boolean {
+    if (arr1.length !== arr2.length) return false;
+    const sorted1 = [...arr1].sort();
+    const sorted2 = [...arr2].sort();
+    return sorted1.every((value, index) => value === sorted2[index]);
+  }
+
+  private validatePairMembersExist(memberIds: string[]): void {
+    const notTeamMembers = memberIds.filter(id => !this.members.contains(id));
+    if (notTeamMembers.length > 0) {
+      throw TeamDomainError.nonTeamMemberError(notTeamMembers);
     }
   }
 
+  private validatePairMemberCount(memberIds: string[]): void {
+    if (memberIds.length < 2 || memberIds.length > 3) {
+      throw TeamDomainError.invalidPairMemberCount();
+    }
+  }
+
+  private validateNoDuplicateMembers(memberIds: string[]): void {
+    const uniqueMembers = new Set(memberIds);
+    if (uniqueMembers.size !== memberIds.length) {
+      throw TeamDomainError.duplicateMemberError();
+    }
+  }
+
+  // TODO： Value Objectとして、TeamIdを定義する。
+  //  IDのフォーマット検証は、「Teamという概念」の責務というよりは、「TeamのIDという概念」の責務です。
   private static validateTeamId(teamId: string): void {
     if (!teamId) {
       throw new TeamIdRequiredError();
@@ -61,35 +126,18 @@ export class Team {
     return this.name;
   }
 
-  public getMembers(): User[] {
-    return [...this.members];
+  public getMembers(): TeamMember[] {
+    return this.members.getMembers();
   }
 
-  public static rebuild(teamId: string, name: TeamName, members: User[]): Team {
+  public getMemberIds(): string[] {
+    return this.members.getMemberIds();
+  }
+
+  public static rebuild(teamId: string, name: TeamName, members: TeamMember[]): Team {
     Team.validateTeamId(teamId);
-    Team.validateMembers(members);
-    return new Team(teamId, name, members);
-  }
-
-  public formPair(membersToPair: User[], pairName: PairName): void {
-    this.validatePairFormation(membersToPair);
-    const pair = new Pair(pairName, membersToPair);
-    this.pairs.push(pair);
-  }
-
-  private validatePairFormation(membersToPair: User[]): void {
-    if (membersToPair.length < 2 || membersToPair.length > 3) {
-      throw TeamDomainError.invalidPairMemberCount(membersToPair.length);
-    }
-
-    const nonTeamMembers = membersToPair.filter(
-      member => !this.members.some(teamMember => teamMember.equals(member))
-    );
-
-    if (nonTeamMembers.length > 0) {
-      const nonTeamMemberNames = nonTeamMembers.map(member => member.getName());
-      throw TeamDomainError.nonTeamMemberError(nonTeamMemberNames);
-    }
+    const teamMembers = TeamMembers.create(members);
+    return new Team(teamId, name, teamMembers);
   }
 
   public getPairs(): Pair[] {

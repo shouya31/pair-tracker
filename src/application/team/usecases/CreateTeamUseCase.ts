@@ -2,8 +2,8 @@ import { ITeamRepository } from '../../../domain/team/ITeamRepository';
 import { IUserRepository } from '../../../domain/user/IUserRepository';
 import { Team } from '../../../domain/team/Team';
 import { TeamName } from '../../../domain/team/vo/TeamName';
-import { Prisma } from '@prisma/client';
-import { DuplicateTeamNameError, UserNotFoundError } from '../errors/TeamErrors';
+import { DuplicateTeamNameError, UserNotFoundError, InvalidUserStatusError } from '../errors/TeamErrors';
+import { UserStatus } from '../../../domain/user/enums/UserStatus';
 
 interface CreateTeamUseCaseInput {
   name: string;
@@ -17,25 +17,29 @@ export class CreateTeamUseCase {
   ) {}
 
   async execute(input: CreateTeamUseCaseInput): Promise<void> {
-    const teamName = new TeamName(input.name);
-
-    const memberPromises = input.memberIds.map(async (id) => {
-      const user = await this.userRepository.findById(id);
-      if (!user) {
-        throw new UserNotFoundError(id);
-      }
-      return user;
-    });
-    const members = await Promise.all(memberPromises);
-    const team = Team.create(teamName, members);
-
-    try {
-      await this.teamRepository.save(team);
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new DuplicateTeamNameError(teamName.getValue());
-      }
-      throw error;
+    const teamName = TeamName.create(input.name);
+    const existingTeam = await this.teamRepository.findByName(teamName);
+    if (existingTeam) {
+      throw new DuplicateTeamNameError(teamName.getValue());
     }
+
+    const users = await this.userRepository.findByIds(input.memberIds);
+    if (users.length !== input.memberIds.length) {
+      const foundUserIds = new Set(users.map(u => u.getUserId()));
+      const notFoundId = input.memberIds.find(id => !foundUserIds.has(id));
+      throw new UserNotFoundError(notFoundId!);
+    }
+
+    const nonEnrolledUser = users.find(user => user.getStatus() !== UserStatus.Enrolled);
+    if (nonEnrolledUser) {
+      throw new InvalidUserStatusError(nonEnrolledUser.getName(), nonEnrolledUser.getStatus());
+    }
+
+    const team = Team.create(teamName, users.map(user => ({
+      id: user.getUserId(),
+      name: user.getName()
+    })));
+
+    await this.teamRepository.save(team);
   }
 }

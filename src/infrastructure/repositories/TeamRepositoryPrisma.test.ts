@@ -2,30 +2,36 @@ import { PrismaClient } from '@prisma/client';
 import { TeamRepositoryPrisma } from './TeamRepositoryPrisma';
 import { Team } from '../../domain/team/Team';
 import { TeamName } from '../../domain/team/vo/TeamName';
-import { User } from '../../domain/user/User';
-import { UserStatus } from '../../domain/user/enums/UserStatus';
+import { TeamDomainError } from '../../domain/team/errors/TeamDomainError';
 
 describe('TeamRepositoryPrisma', () => {
   let prisma: PrismaClient;
   let teamRepository: TeamRepositoryPrisma;
-  let testUsers: User[];
   let testTeam: Team;
+  let testUserIds: string[];
 
   beforeEach(async () => {
     prisma = new PrismaClient();
     teamRepository = new TeamRepositoryPrisma(prisma);
 
-    // テスト用のユーザーを作成
-    testUsers = [
-      User.create('user1', 'user1@example.com'),
-      User.create('user2', 'user2@example.com'),
-      User.create('user3', 'user3@example.com'),
+    // テスト用のユーザーIDを作成
+    testUserIds = [
+      '12345678-1234-4123-8123-123456789abc',
+      '12345678-1234-4123-8123-123456789def',
+      '12345678-1234-4123-8123-123456789ghi',
+      '12345678-1234-4123-8123-123456789jkl', // 追加のユーザーID
+      '12345678-1234-4123-8123-123456789mno', // 追加のユーザーID
     ];
 
     // テスト用のチームを作成
+    const teamName = TeamName.create('ABC');
     testTeam = Team.create(
-      new TeamName('ABC'),
-      testUsers,
+      teamName,
+      [
+        { id: testUserIds[0], name: 'user1' },
+        { id: testUserIds[1], name: 'user2' },
+        { id: testUserIds[2], name: 'user3' },
+      ]
     );
 
     // データベースをクリーンアップ
@@ -34,12 +40,12 @@ describe('TeamRepositoryPrisma', () => {
     await prisma.user.deleteMany();
 
     // テストユーザーをデータベースに作成
-    for (const user of testUsers) {
+    for (let i = 0; i < testUserIds.length; i++) {
       await prisma.user.create({
         data: {
-          id: user.getUserId(),
-          name: user.getName(),
-          email: user.getEmail(),
+          id: testUserIds[i],
+          name: `user${i + 1}`,
+          email: `user${i + 1}@example.com`,
         },
       });
     }
@@ -55,7 +61,7 @@ describe('TeamRepositoryPrisma', () => {
       await teamRepository.save(testTeam);
 
       // 名前で検索
-      const found = await teamRepository.findByName(new TeamName('ABC'));
+      const found = await teamRepository.findByName(TeamName.create('ABC'));
       
       expect(found).not.toBeNull();
       expect(found?.getName()).toBe('ABC');
@@ -63,7 +69,7 @@ describe('TeamRepositoryPrisma', () => {
     });
 
     it('should return null when team not found by name', async () => {
-      const found = await teamRepository.findByName(new TeamName('XYZ'));
+      const found = await teamRepository.findByName(TeamName.create('XYZ'));
       expect(found).toBeNull();
     });
   });
@@ -105,23 +111,96 @@ describe('TeamRepositoryPrisma', () => {
       expect(savedTeam).not.toBeNull();
       expect(savedTeam?.name).toBe('ABC');
       expect(savedTeam?.members).toHaveLength(3);
+      expect(savedTeam?.members.map(m => m.userId).sort()).toEqual(testUserIds.slice(0, 3).sort());
     });
 
-    it('should update existing team', async () => {
+    it('should update existing team name', async () => {
       // 最初のチームを保存
       await teamRepository.save(testTeam);
 
       // チーム名を更新
       const updatedTeam = Team.rebuild(
         testTeam.getTeamId(),
-        new TeamName('XYZ'),
-        testUsers,
+        TeamName.create('XYZ'),
+        testTeam.getMembers()
       );
 
       await teamRepository.save(updatedTeam);
 
       const found = await teamRepository.findById(testTeam.getTeamId());
       expect(found?.getName()).toBe('XYZ');
+    });
+
+    it('should add new members to existing team', async () => {
+      // 最初のチームを保存
+      await teamRepository.save(testTeam);
+
+      // メンバーを追加
+      const updatedTeam = Team.rebuild(
+        testTeam.getTeamId(),
+        TeamName.create('ABC'),
+        [
+          ...testTeam.getMembers(),
+          { id: testUserIds[3], name: 'user4' },
+        ]
+      );
+
+      await teamRepository.save(updatedTeam);
+
+      const found = await prisma.teamUser.findMany({
+        where: { teamId: testTeam.getTeamId() },
+      });
+      expect(found).toHaveLength(4);
+      expect(found.map(m => m.userId).sort()).toEqual(testUserIds.slice(0, 4).sort());
+    });
+
+    it('should update team members while maintaining minimum member count', async () => {
+      // 最初のチームを保存
+      await teamRepository.save(testTeam);
+
+      // メンバーを更新（3名を維持）
+      const updatedTeam = Team.rebuild(
+        testTeam.getTeamId(),
+        TeamName.create('ABC'),
+        [
+          { id: testUserIds[2], name: 'user3' },
+          { id: testUserIds[3], name: 'user4' },
+          { id: testUserIds[4], name: 'user5' },
+        ]
+      );
+
+      await teamRepository.save(updatedTeam);
+
+      const found = await prisma.teamUser.findMany({
+        where: { teamId: testTeam.getTeamId() },
+      });
+      expect(found).toHaveLength(3);
+      expect(found.map(m => m.userId).sort()).toEqual([testUserIds[2], testUserIds[3], testUserIds[4]].sort());
+    });
+
+    it('should throw error when trying to update with less than 3 members', async () => {
+      // 最初のチームを保存
+      await teamRepository.save(testTeam);
+
+      // 2名のメンバーでの更新を試みる
+      await expect(async () => {
+        const invalidTeam = Team.rebuild(
+          testTeam.getTeamId(),
+          TeamName.create('ABC'),
+          [
+            { id: testUserIds[0], name: 'user1' },
+            { id: testUserIds[1], name: 'user2' },
+          ]
+        );
+        await teamRepository.save(invalidTeam);
+      }).rejects.toThrow(TeamDomainError);
+
+      // データベースの状態が変更されていないことを確認
+      const found = await prisma.teamUser.findMany({
+        where: { teamId: testTeam.getTeamId() },
+      });
+      expect(found).toHaveLength(3);
+      expect(found.map(m => m.userId).sort()).toEqual(testUserIds.slice(0, 3).sort());
     });
   });
 }); 

@@ -1,25 +1,27 @@
 import { DomainError } from '../../shared/DomainError';
-import { User } from '../../user/User';
 
 export class TeamDomainError extends DomainError {
-  static memberCountError(count: number): TeamDomainError {
-    return new TeamDomainError(`チームは3名以上のメンバーが必要です（現在: ${count}名）`);
+  public static memberCountError(count: number): TeamDomainError {
+    return new TeamDomainError(`チームには最低3名のメンバーが必要です。現在のメンバー数: ${count}`);
   }
 
-  static memberStatusError(nonEnrolledMembers: User[]): TeamDomainError {
-    const nonEnrolledDetails = nonEnrolledMembers
-      .map(member => `${member.getName()}(${member.getStatus()})`)
-      .join(', ');
-    return new TeamDomainError(
-      `チームメンバーは全員が在籍中である必要があります。以下のメンバーが在籍中ではありません：${nonEnrolledDetails}`
-    );
+  public static memberStatusError(invalidMembers: string[]): TeamDomainError {
+    return new TeamDomainError(`在籍中でないメンバーはチームに所属できません: ${invalidMembers.join(', ')}`);
   }
 
-  static invalidPairMemberCount(count: number): TeamDomainError {
-    return new TeamDomainError(`ペアは2名または3名で構成する必要があります（現在: ${count}名）`);
+  public static duplicateMemberError(): TeamDomainError {
+    return new TeamDomainError('同じメンバーを複数回指定することはできません');
   }
 
-  static nonTeamMemberError(memberNames: string[]): TeamDomainError {
-    return new TeamDomainError(`以下のメンバーはチームに所属していません：${memberNames.join(', ')}`);
+  public static invalidPairMemberCount(): TeamDomainError {
+    return new TeamDomainError('ペアのメンバー数は2人または3人である必要があります');
   }
-} 
+
+  public static nonTeamMemberError(memberIds: string[]): TeamDomainError {
+    return new TeamDomainError(`以下のメンバーはチームに所属していません: ${memberIds.join(', ')}`);
+  }
+
+  public static duplicatePairMemberError(memberNames: string[]): TeamDomainError {
+    return new TeamDomainError(`以下のメンバーは既に他のペアに所属しています: ${memberNames.join(', ')}`);
+  }
+}
