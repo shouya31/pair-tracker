@@ -99,7 +99,7 @@ sequenceDiagram
 | エラーケース | 発生レイヤー | エラー型 | `Presentation`層の挙動 |
 | :--- | :--- | :--- | :--- |
 | チーム名が文字列でない | `Presentation` | `ZodError` | `400 Bad Request` とバリデーションエラーの詳細を返す。 |
-| チーム名が3文字を超える | `Domain` | `TeamNameLengthError` | `400 Bad Request` とエラーメッセージを返す。 |
+| チーム名が3文字を超える | `Domain` | `TeamValidationError.teamNameTooLong` | `400 Bad Request` とエラーメッセージを返す。 |
 | チーム名が既に登録済み | `Application` | `DuplicateTeamNameError` | `409 Conflict` とエラーメッセージを返す。 |
 | メンバー数が3名未満 | `Domain` | `TeamDomainError.memberCountError` | `400 Bad Request` とエラーメッセージを返す。 |
 | 指定されたメンバーが存在しない | `Application` | `UserNotFoundError` | `404 Not Found` とエラーメッセージを返す。 |
