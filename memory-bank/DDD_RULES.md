@@ -324,7 +324,7 @@ export async function POST(req: Request) {
 ### 3-4. Infrastructure層
 #### **責務**: データベースアクセスや外部API連携など、技術的な詳細の実装。
 
-####**配置場所**: `src/infrastructure/`
+#### **配置場所**: `src/infrastructure/`
 
 #### **構成要素**:
     * リポジトリの実装クラス (`UserRepositoryPrisma`)
