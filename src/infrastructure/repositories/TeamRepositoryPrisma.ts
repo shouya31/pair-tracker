@@ -107,4 +107,35 @@ export class TeamRepositoryPrisma implements ITeamRepository {
       }),
     ]);
   }
+
+  async findAll(): Promise<Team[]> {
+    try {
+      console.log('Fetching all teams...');
+      const teams = await this.prisma.team.findMany({
+        include: {
+          members: {
+            include: {
+              user: true
+            }
+          }
+        }
+      });
+      console.log('Found teams:', teams);
+
+      return teams.map(team => {
+        const teamName = TeamName.create(team.name);
+        return Team.rebuild(
+          team.id,
+          teamName,
+          team.members.map(member => ({
+            id: member.user.id,
+            name: member.user.name
+          }))
+        );
+      });
+    } catch (error) {
+      console.error('Error in TeamRepositoryPrisma.findAll:', error);
+      throw error;
+    }
+  }
 }
