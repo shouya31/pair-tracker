@@ -1,15 +1,12 @@
-import Link from 'next/link';
 import { headers } from 'next/headers';
-
-interface TeamMember {
-  id: string;
-  name: string;
-}
 
 interface Team {
   id: string;
   name: string;
-  members: TeamMember[];
+  members: {
+    id: string;
+    name: string;
+  }[];
 }
 
 async function getTeams() {
@@ -48,14 +45,8 @@ export default async function TeamsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
+      <div className="mb-8">
         <h1 className="text-2xl font-bold">チーム一覧</h1>
-        <Link
-          href="/teams/create"
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-        >
-          新規チーム作成
-        </Link>
       </div>
 
       {error ? (
@@ -65,7 +56,7 @@ export default async function TeamsPage() {
         </div>
       ) : teams.length === 0 ? (
         <div className="text-center py-8 text-gray-600">
-          チームがまだ登録されていません
+          チームが登録されていません
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

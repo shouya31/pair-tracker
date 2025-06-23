@@ -1,26 +1,19 @@
-import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
-import { UserStatus } from '@/domain/user/enums/UserStatus';
+import { getUsersUseCase } from '@/server/usecases';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    console.log('Fetching enrolled users...');
-    const users = await prisma.user.findMany({
-      where: {
-        status: UserStatus.Enrolled
-      },
-      select: {
-        id: true,
-        name: true
-      }
-    });
-    console.log('Found users:', users);
-
+    const users = await getUsersUseCase.execute();
     return NextResponse.json(users);
   } catch (error) {
-    console.error('Failed to fetch users:', error);
+    console.error('GET /api/users: Error:', error);
     return NextResponse.json(
-      { message: 'ユーザー情報の取得に失敗しました' },
+      { 
+        message: 'ユーザーの取得に失敗しました',
+        details: error instanceof Error ? error.message : undefined
+      },
       { status: 500 }
     );
   }

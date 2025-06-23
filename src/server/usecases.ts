@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { RegisterUserUseCase } from '@/application/user/usecases/RegisterUserUseCase';
+import { GetUsersUseCase } from '@/application/user/usecases/GetUsersUseCase';
 import { UserRepositoryPrisma } from '@/infrastructure/repositories/UserRepositoryPrisma';
 import { CreateTeamUseCase } from '@/application/team/usecases/CreateTeamUseCase';
 import { TeamRepositoryPrisma } from '@/infrastructure/repositories/TeamRepositoryPrisma';
@@ -25,7 +26,12 @@ function createGetTeamsUseCaseInstance() {
   return new GetTeamsUseCase(teamRepository);
 }
 
+function createGetUsersUseCaseInstance() {
+  return new GetUsersUseCase(userRepository);
+}
+
 // シングルトンインスタンスをエクスポート
 export const registerUserUseCase = createRegisterUserUseCaseInstance();
 export const createTeamUseCase = createTeamUseCaseInstance();
 export const getTeamsUseCase = createGetTeamsUseCaseInstance();
+export const getUsersUseCase = createGetUsersUseCaseInstance();
