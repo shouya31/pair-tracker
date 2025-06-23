@@ -13,6 +13,7 @@
 ```bash
 # アプリケーションのビルドと起動
 docker compose up -d --build
+# ブラウザで http://localhost:3001 にアクセス
 
 # データベースのマイグレーション
 docker compose exec app npx prisma migrate dev
