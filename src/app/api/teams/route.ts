@@ -2,24 +2,21 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createTeamSchema } from '@/lib/schemas/team-schema';
 import { createTeamUseCase, getTeamsUseCase } from '@/server/usecases';
-import { DuplicateTeamNameError, UserNotFoundError } from '@/application/team/errors/TeamErrors';
 import { TeamValidationError } from '@/domain/team/errors/TeamValidationError';
 import { TeamDomainError } from '@/domain/team/errors/TeamDomainError';
+import { UnexpectedError } from '@/domain/shared/errors/SystemError';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    console.log('GET /api/teams: Starting...');
     const teams = await getTeamsUseCase.execute();
-    console.log('GET /api/teams: Success', teams);
     return NextResponse.json({ teams });
   } catch (error) {
-    console.error('GET /api/teams: Error:', error);
+    const unexpectedError = new UnexpectedError(error instanceof Error ? error : undefined);
     return NextResponse.json(
       {
-        message: 'チームの取得に失敗しました',
-        details: error instanceof Error ? error.message : undefined
+        error: unexpectedError.message
       },
       { status: 500 }
     );
@@ -36,45 +33,53 @@ export async function POST(request: Request) {
       memberIds: validatedData.memberIds
     });
 
-    return NextResponse.json({ message: 'チームを作成しました' }, { status: 201 });
+    return NextResponse.json(
+      { message: 'チームを作成しました' },
+      { status: 201 }
+    );
   } catch (error) {
     if (error instanceof z.ZodError) {
+      const firstError = error.errors[0];
       return NextResponse.json(
-        { message: 'バリデーションエラー', errors: error.errors },
+        {
+          error: firstError.message,
+          field: firstError.path.join('.'),
+          value: firstError.path[0].toString()
+        },
         { status: 400 }
-      );
-    }
-
-    if (error instanceof DuplicateTeamNameError) {
-      return NextResponse.json(
-        { message: error.message },
-        { status: 409 }
       );
     }
 
     if (error instanceof TeamValidationError) {
       return NextResponse.json(
-        { message: error.message },
+        { error: error.message },
         { status: 400 }
       );
     }
 
     if (error instanceof TeamDomainError) {
-      return NextResponse.json(
-        { message: error.message },
-        { status: 400 }
-      );
+      switch (error.type) {
+        case 'DUPLICATE_TEAM_NAME':
+          return NextResponse.json(
+            { error: error.message },
+            { status: 409 }
+          );
+        case 'NON_TEAM_MEMBER':
+          return NextResponse.json(
+            { error: error.message },
+            { status: 404 }
+          );
+        default:
+          return NextResponse.json(
+            { error: error.message },
+            { status: 400 }
+          );
+      }
     }
 
-    if (error instanceof UserNotFoundError) {
-      return NextResponse.json(
-        { message: error.message },
-        { status: 404 }
-      );
-    }
-
+    const unexpectedError = new UnexpectedError(error instanceof Error ? error : undefined);
     return NextResponse.json(
-      { message: '予期せぬエラーが発生しました' },
+      { error: unexpectedError.message },
       { status: 500 }
     );
   }

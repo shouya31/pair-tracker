@@ -132,7 +132,7 @@ describe('ユーザー登録API', () => {
 
       const responseBody = await response.json();
       expect(responseBody).toEqual({
-        error: 'システムエラーが発生しました: 予期せぬエラーが発生しました'
+        error: '予期せぬエラーが発生しました'
       });
     });
   });

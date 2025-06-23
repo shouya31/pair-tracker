@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { UserDomainError } from '@/domain/user/errors/UserDomainError';
-import { DomainError } from '@/domain/shared/DomainError';
+import { UserValidationError } from '@/domain/user/errors/UserValidationError';
 import { UnexpectedError } from '@/domain/shared/errors/SystemError';
 import { ZodError } from 'zod';
 import { registerUserSchema } from '@/lib/schemas/user-schema';
@@ -40,6 +40,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (error instanceof UserValidationError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      );
+    }
+
     if (error instanceof UserDomainError) {
       switch (error.type) {
         case 'ALREADY_EXISTS':
@@ -52,19 +59,7 @@ export async function POST(request: Request) {
             { error: error.message },
             { status: 404 }
           );
-        default:
-          return NextResponse.json(
-            { error: error.message },
-            { status: 400 }
-          );
       }
-    }
-
-    if (error instanceof DomainError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      );
     }
 
     const unexpectedError = new UnexpectedError(error instanceof Error ? error : undefined);

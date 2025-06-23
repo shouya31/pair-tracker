@@ -4,4 +4,4 @@ export abstract class DomainError extends Error {
     this.name = this.constructor.name;
     Object.setPrototypeOf(this, new.target.prototype);
   }
-} 
+}
