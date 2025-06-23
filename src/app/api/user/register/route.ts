@@ -4,7 +4,7 @@ import { DomainError } from '@/domain/shared/DomainError';
 import { UnexpectedError } from '@/domain/shared/errors/SystemError';
 import { ZodError } from 'zod';
 import { registerUserSchema } from '@/lib/schemas/user-schema';
-import { createRegisterUserUseCase } from '@/server/usecases';
+import { registerUserUseCase } from '@/server/usecases';
 import type { UserResponse } from '@/presentation/types/responses/UserResponse';
 
 export async function POST(request: Request) {
@@ -12,10 +12,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validatedData = registerUserSchema.parse(body);
 
-    const registerUserUseCase = createRegisterUserUseCase();
     const registeredUser = await registerUserUseCase.execute(validatedData.name, validatedData.email);
 
-    // DTOからプレゼンテーション層のレスポンス型に変換
     const userResponse: UserResponse = {
       name: registeredUser.name,
       email: registeredUser.email
@@ -56,10 +54,11 @@ export async function POST(request: Request) {
       );
     }
 
+    console.error('Unexpected error:', error);
     const unexpectedError = new UnexpectedError(error instanceof Error ? error : undefined);
     return NextResponse.json(
       { error: unexpectedError.message },
       { status: 500 }
     );
   }
-} 
+}
