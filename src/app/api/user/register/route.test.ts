@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { POST } from './route';
 import { UserDTO } from '@/application/user/dto/UserDTO';
-import { UserAlreadyExistsError } from '@/domain/user/errors/UserValidationError';
+import { UserDomainError } from '@/domain/user/errors/UserDomainError';
 import { registerUserUseCase } from '@/server/usecases';
 
 jest.mock('@/server/usecases', () => ({
@@ -98,7 +98,7 @@ describe('ユーザー登録API', () => {
         email: 'existing@example.com'
       };
 
-      mockExecute.mockRejectedValueOnce(new UserAlreadyExistsError(requestBody.email));
+      mockExecute.mockRejectedValueOnce(UserDomainError.alreadyExists(requestBody.email));
 
       const request = new NextRequest('http://localhost:3000/api/user/register', {
         method: 'POST',
@@ -110,7 +110,7 @@ describe('ユーザー登録API', () => {
 
       const responseBody = await response.json();
       expect(responseBody).toEqual({
-        error: 'このメールアドレスは既に登録されています: existing@example.com'
+        error: 'このメールアドレスは既に使用されています: existing@example.com'
       });
     });
 

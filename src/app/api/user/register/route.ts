@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { UserAlreadyExistsError } from '@/domain/user/errors/UserValidationError';
+import { UserDomainError } from '@/domain/user/errors/UserDomainError';
 import { DomainError } from '@/domain/shared/DomainError';
 import { UnexpectedError } from '@/domain/shared/errors/SystemError';
 import { ZodError } from 'zod';
@@ -40,11 +40,24 @@ export async function POST(request: Request) {
       );
     }
 
-    if (error instanceof UserAlreadyExistsError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 409 }
-      );
+    if (error instanceof UserDomainError) {
+      switch (error.type) {
+        case 'ALREADY_EXISTS':
+          return NextResponse.json(
+            { error: error.message },
+            { status: 409 }
+          );
+        case 'NOT_FOUND':
+          return NextResponse.json(
+            { error: error.message },
+            { status: 404 }
+          );
+        default:
+          return NextResponse.json(
+            { error: error.message },
+            { status: 400 }
+          );
+      }
     }
 
     if (error instanceof DomainError) {

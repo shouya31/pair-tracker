@@ -1,7 +1,7 @@
 import { User } from '@/domain/user/User';
 import { IUserRepository } from '@/domain/user/IUserRepository';
 import { UserDTO } from '../dto/UserDTO';
-import { UserAlreadyExistsError } from '@/domain/user/errors/UserValidationError';
+import { UserDomainError } from '@/domain/user/errors/UserDomainError';
 import { Email } from '@/domain/shared/Email';
 
 export class RegisterUserUseCase {
@@ -11,7 +11,7 @@ export class RegisterUserUseCase {
     const emailVO = Email.create(email);
     const existingUser = await this.userRepository.findByEmail(emailVO);
     if (existingUser) {
-      throw new UserAlreadyExistsError(email);
+      throw UserDomainError.alreadyExists(email);
     }
 
     const user = User.create(name, email);

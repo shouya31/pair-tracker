@@ -35,7 +35,7 @@
 -   **メンバー数の制限:**
     -   **ルール:** 各チームには最低3名のユーザーが所属していなければならない。
     -   **責務:** `Domain`層 / `Team`エンティティ
-    -   **違反時の挙動:** `InvalidTeamMemberCountError`をスローし、登録処理を中断する。
+    -   **違反時の挙動:** `TeamDomainError.memberCountError`をスローし、登録処理を中断する。
 
 ## 正常系フロー
 
@@ -99,9 +99,9 @@ sequenceDiagram
 | エラーケース | 発生レイヤー | エラー型 | `Presentation`層の挙動 |
 | :--- | :--- | :--- | :--- |
 | チーム名が文字列でない | `Presentation` | `ZodError` | `400 Bad Request` とバリデーションエラーの詳細を返す。 |
-| チーム名が3文字を超える | `Domain` | `TeamNameTooLongError` | `400 Bad Request` とエラーメッセージを返す。 |
+| チーム名が3文字を超える | `Domain` | `TeamNameLengthError` | `400 Bad Request` とエラーメッセージを返す。 |
 | チーム名が既に登録済み | `Application` | `DuplicateTeamNameError` | `409 Conflict` とエラーメッセージを返す。 |
-| メンバー数が3名未満 | `Domain` | `InvalidTeamMemberCountError` | `400 Bad Request` とエラーメッセージを返す。 |
+| メンバー数が3名未満 | `Domain` | `TeamDomainError.memberCountError` | `400 Bad Request` とエラーメッセージを返す。 |
 | 指定されたメンバーが存在しない | `Application` | `UserNotFoundError` | `404 Not Found` とエラーメッセージを返す。 |
 | リクエストの形式が不正 | `Presentation` | `ZodError` | `400 Bad Request` とバリデーションエラーの詳細を返す。 |
 | その他の予期せぬエラー | - | `Error` | `500 Internal Server Error` として処理される。 |
@@ -135,8 +135,8 @@ sequenceDiagram
         Client->>+Presentation: POST /api/teams (2名のメンバー)
         Presentation->>+Application: execute(name, members)
         Application->>+Domain: Team.create(name, members)
-        Domain-->>-Application: throw InvalidTeamMemberCountError
-        Application-->>-Presentation: throw InvalidTeamMemberCountError
+        Domain-->>-Application: throw TeamDomainError.memberCountError
+        Application-->>-Presentation: throw TeamDomainError.memberCountError
         Presentation-->>-Client: 400 Bad Request
     end
 ```

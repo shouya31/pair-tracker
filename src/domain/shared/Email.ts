@@ -1,9 +1,9 @@
-import { EmailValidationError } from './errors/EmailValidationError';
+import { UserValidationError } from '../user/errors/UserValidationError';
 
 export class Email {
   private constructor(private readonly value: string) {
     if (!Email.isValid(value)) {
-      throw EmailValidationError.invalid(value);
+      throw UserValidationError.emailInvalid(value);
     }
   }
 
