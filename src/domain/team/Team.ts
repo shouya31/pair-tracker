@@ -106,11 +106,11 @@ export class Team extends AggregateRoot {
   //  IDのフォーマット検証は、「Teamという概念」の責務というよりは、「TeamのIDという概念」の責務です。
   private static validateTeamId(teamId: string): void {
     if (!teamId) {
-      throw TeamIdRequiredError();
+      throw new TeamIdRequiredError();
     }
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(teamId)) {
-      throw TeamIdFormatError(teamId);
+      throw new TeamIdFormatError(teamId);
     }
   }
 

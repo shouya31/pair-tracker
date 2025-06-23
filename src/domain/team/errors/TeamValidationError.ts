@@ -1,5 +1,17 @@
 import { ValidationError } from '../../shared/errors/ValidationError';
 
+export class TeamIdRequiredError extends ValidationError {
+  constructor() {
+    super('この項目は必須です', 'チームID');
+  }
+}
+
+export class TeamIdFormatError extends ValidationError {
+  constructor(value: string) {
+    super('UUID形式である必要があります', 'チームID', value);
+  }
+}
+
 export class TeamValidationError extends ValidationError {
   // Team Name Validation
   static teamNameRequired(): TeamValidationError {
@@ -33,6 +45,3 @@ export class TeamValidationError extends ValidationError {
     );
   }
 }
-
-export const TeamIdRequiredError = TeamValidationError.teamIdRequired;
-export const TeamIdFormatError = (value: string) => TeamValidationError.teamIdInvalidFormat(value);
