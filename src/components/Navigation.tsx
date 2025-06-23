@@ -20,7 +20,7 @@ export default function Navigation() {
       <div className="container mx-auto">
         <div className="flex items-center justify-between">
           <Link href="/" className="text-xl font-bold">
-            ペアプロ管理
+            Pair Tracker
           </Link>
           <div className="flex items-center space-x-6">
             {/* ユーザー関連 */}
