@@ -24,4 +24,12 @@ export class TeamDomainError extends DomainError {
   public static duplicatePairMemberError(memberNames: string[]): TeamDomainError {
     return new TeamDomainError(`以下のメンバーは既に他のペアに所属しています: ${memberNames.join(', ')}`);
   }
+
+  public static noPendingPairFormationError(): TeamDomainError {
+    return new TeamDomainError('ペア形成リクエストが存在しません');
+  }
+
+  public static pairFormationMismatchError(): TeamDomainError {
+    return new TeamDomainError('承認されたメンバーが、リクエストされたメンバーと一致しません');
+  }
 }

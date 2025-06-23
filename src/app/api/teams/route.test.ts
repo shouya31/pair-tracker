@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { POST } from './route';
 import { createTeamUseCase } from '@/server/usecases';
 import { DuplicateTeamNameError, UserNotFoundError } from '@/application/team/errors/TeamErrors';
-import { TeamNameLengthError } from '@/domain/team/errors/TeamValidationError';
+import { TeamValidationError } from '@/domain/team/errors/TeamValidationError';
 
 jest.mock('@/server/usecases', () => ({
   createTeamUseCase: {
@@ -84,7 +84,7 @@ describe('POST /api/teams', () => {
       memberIds: ['user1', 'user2', 'user3'],
     };
 
-    mockExecute.mockRejectedValueOnce(new TeamNameLengthError('ABCD'));
+    mockExecute.mockRejectedValueOnce(TeamValidationError.teamNameTooLong('ABCD'));
 
     const request = new NextRequest('http://localhost:3000/api/teams', {
       method: 'POST',

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { createTeamSchema } from '@/lib/schemas/team-schema';
 import { createTeamUseCase, getTeamsUseCase } from '@/server/usecases';
 import { DuplicateTeamNameError, UserNotFoundError } from '@/application/team/errors/TeamErrors';
-import { TeamNameLengthError } from '@/domain/team/errors/TeamValidationError';
+import { TeamValidationError } from '@/domain/team/errors/TeamValidationError';
 import { TeamDomainError } from '@/domain/team/errors/TeamDomainError';
 
 export const dynamic = 'force-dynamic';
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (error instanceof TeamNameLengthError) {
+    if (error instanceof TeamValidationError) {
       return NextResponse.json(
         { message: error.message },
         { status: 400 }

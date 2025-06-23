@@ -4,13 +4,53 @@ import { DomainError } from '../DomainError';
  * バリデーションエラーの基底クラス
  * 値の検証に関する基本的なエラーを表現します
  */
-export abstract class ValidationError extends DomainError {
+export class ValidationError extends DomainError {
   constructor(
     message: string,
     public readonly propertyName: string,
-    public readonly actualValue: unknown
+    public readonly value?: unknown
   ) {
     super(`${propertyName}の検証に失敗しました: ${message}`);
+    this.name = 'ValidationError';
+  }
+
+  static required(propertyName: string): ValidationError {
+    return new ValidationError(
+      'この項目は必須です',
+      propertyName
+    );
+  }
+
+  static maxLength(propertyName: string, value: string, maxLength: number): ValidationError {
+    return new ValidationError(
+      `${maxLength}文字以下で入力してください（現在: ${value.length}文字）`,
+      propertyName,
+      value
+    );
+  }
+
+  static minLength(propertyName: string, value: string, minLength: number): ValidationError {
+    return new ValidationError(
+      `${minLength}文字以上で入力してください（現在: ${value.length}文字）`,
+      propertyName,
+      value
+    );
+  }
+
+  static exactLength(propertyName: string, value: string, length: number): ValidationError {
+    return new ValidationError(
+      `${length}文字である必要があります`,
+      propertyName,
+      value
+    );
+  }
+
+  static format(propertyName: string, value: unknown, format: string): ValidationError {
+    return new ValidationError(
+      `${format}形式である必要があります`,
+      propertyName,
+      value
+    );
   }
 }
 
