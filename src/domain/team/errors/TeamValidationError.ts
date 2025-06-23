@@ -33,3 +33,6 @@ export class TeamValidationError extends ValidationError {
     );
   }
 }
+
+export const TeamIdRequiredError = TeamValidationError.teamIdRequired;
+export const TeamIdFormatError = (value: string) => TeamValidationError.teamIdInvalidFormat(value);

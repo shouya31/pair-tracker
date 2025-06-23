@@ -27,4 +27,4 @@ export class UserDomainError extends DomainError {
       'NOT_FOUND'
     );
   }
-} 
+}

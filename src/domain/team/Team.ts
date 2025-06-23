@@ -54,13 +54,13 @@ export class Team extends AggregateRoot {
 
   public confirmPairFormation(approvedMemberIds: string[]): void {
     if (!this.pendingPairFormation) {
-      throw new TeamDomainError('ペア形成リクエストが存在しません');
+      throw TeamDomainError.noPendingPairFormationError();
     }
 
     const { memberIds, pairName } = this.pendingPairFormation;
 
     if (!this.areArraysEqual(memberIds, approvedMemberIds)) {
-      throw new TeamDomainError('承認されたメンバーが、リクエストされたメンバーと一致しません');
+      throw TeamDomainError.pairFormationMismatchError();
     }
 
     const pair = new Pair(pairName, memberIds);
@@ -106,11 +106,11 @@ export class Team extends AggregateRoot {
   //  IDのフォーマット検証は、「Teamという概念」の責務というよりは、「TeamのIDという概念」の責務です。
   private static validateTeamId(teamId: string): void {
     if (!teamId) {
-      throw new TeamIdRequiredError();
+      throw TeamIdRequiredError();
     }
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(teamId)) {
-      throw new TeamIdFormatError(teamId);
+      throw TeamIdFormatError(teamId);
     }
   }
 
