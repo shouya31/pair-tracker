@@ -25,7 +25,7 @@ export function MemberSelect({ selectedIds, onChange }: Props) {
           throw new Error('ユーザー情報の取得に失敗しました');
         }
         const data = await response.json();
-        setUsers(data);
+        setUsers(data.users);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'エラーが発生しました');
       } finally {
