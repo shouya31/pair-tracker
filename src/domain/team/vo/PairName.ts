@@ -1,4 +1,4 @@
-import { PairNameValidationError } from '../errors/PairNameValidationError';
+import { PairValidationError } from '../errors/PairValidationError';
 
 export class PairName {
   private readonly value: string;
@@ -10,11 +10,11 @@ export class PairName {
 
   private validatePairName(value: string): void {
     if (value.length !== 1) {
-      throw PairNameValidationError.lengthError();
+      throw PairValidationError.nameLength(value);
     }
 
     if (!/^[A-Z]$/.test(value)) {
-      throw PairNameValidationError.formatError();
+      throw PairValidationError.nameFormat(value);
     }
   }
 

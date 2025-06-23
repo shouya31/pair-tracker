@@ -2,6 +2,49 @@
 
 ## 1. はじめに
 このドキュメントは、本プロジェクトにおけるソフトウェアアーキテクチャの指針を定めるものです。すべてのコードは、ここに記述されたドメイン駆動設計（DDD）およびクリーンアーキテクチャの原則に従って実装される必要があります。
+### 2-1. 設計思想：関心の分離と「豊かなドメインモデル」
+
+本プロジェクトのアーキテクチャは、**関心の分離（Separation of Concerns）**を徹底し、**システムの核となるビジネスルール（ドメイン）を、技術的な詳細（UI、データベースなど）から完全に保護する**ことを目的としています。
+
+これにより、以下のメリットを実現します。
+* **保守性**: ビジネスルールを変更する際、UIやデータベースの実装を気にする必要がありません。
+* **テスト容易性**: ドメインロジックを、UIやデータベースから独立した純粋なユニットテストで検証できます。
+* **拡張性**: データベースをPostgreSQLから別のものに切り替えたり、APIをGraphQLに拡張したりする場合でも、ドメイン層への影響を最小限に抑えられます。
+
+この目的を達成するため、本プロジェクトでは**オニオンアーキテクチャ**の考え方を採用し、ビジネスロジックを内包した**「豊かなドメインモデル」**の構築を目指します。
+
+### 2-2. レイヤー構造とデータの流れ
+
+アーキテクチャは以下の4層で構成され、データの流れは常に外側のレイヤーから内側へ向かいます。以下に、典型的なコマンド（例：チーム作成）処理の流れを示します。
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Presentation as Presentation層<br>(API Route)
+    participant Application as Application層<br>(UseCase)
+    participant Domain as Domain層<br>(集約 / VO)
+    participant Infrastructure as Infrastructure層<br>(Repository)
+    participant DB
+
+    Client->>+Presentation: 1. POST /api/teams (HTTPリクエスト)
+    Note over Presentation: zodでリクエストの「形」を検証
+    Presentation->>+Application: 2. execute({ name, memberIds })
+    Application->>+Infrastructure: 3. findByName(teamName)
+    Infrastructure->>+DB: クエリ実行
+    DB-->>-Infrastructure: 存在しない
+    Infrastructure-->>-Application: null
+    Application->>+Domain: 4. Team.create(teamName, members)
+    Note over Domain: ビジネスルールを検証<br>イベントを内部で生成
+    Domain-->>-Application: Team集約インスタンス
+    Application->>+Infrastructure: 5. save(team)
+    Infrastructure->>+DB: トランザクション実行 (INSERT/UPDATE)
+    DB-->>-Infrastructure: 永続化成功
+    Infrastructure-->>-Application: void
+    Application->>+Infrastructure: 6. eventBus.dispatch(events)
+    Infrastructure-->>-Application: イベント発行
+    Application-->>-Presentation: 7. DTOまたはvoid
+    Presentation-->>-Client: 8. 201 Created (HTTPレスポンス)
+```
 
 ## 2. アーキテクチャ概要
 本プロジェクトでは、以下の4層からなるレイヤードアーキテクチャを採用します。

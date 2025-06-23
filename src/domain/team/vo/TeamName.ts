@@ -1,20 +1,20 @@
-import { TeamNameLengthError, TeamNameRequiredError } from '../errors/TeamValidationError';
+import { TeamValidationError } from '../errors/TeamValidationError';
 
 export class TeamName {
   private readonly value: string;
 
   public static create(value: string): TeamName {
     if (!value) {
-      throw new TeamNameRequiredError();
+      throw TeamValidationError.teamNameRequired();
     }
 
     const trimmedValue = value.trim();
     if (!trimmedValue) {
-      throw new TeamNameRequiredError();
+      throw TeamValidationError.teamNameRequired();
     }
 
     if (trimmedValue.length > 3) {
-      throw new TeamNameLengthError(trimmedValue);
+      throw TeamValidationError.teamNameTooLong(trimmedValue);
     }
 
     return new TeamName(trimmedValue);

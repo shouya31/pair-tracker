@@ -6,7 +6,7 @@ import Navigation from "@/components/Navigation";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "ペアプロ管理",
+  title: "Pair Tracker",
   description: "ペアプログラミングの管理アプリケーション",
 };
 

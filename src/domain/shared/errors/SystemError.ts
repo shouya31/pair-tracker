@@ -9,7 +9,7 @@ export class SystemError extends DomainError {
     message: string,
     public readonly cause?: Error
   ) {
-    super(`システムエラーが発生しました: ${message}`);
+    super(message);
   }
 }
 
