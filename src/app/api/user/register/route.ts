@@ -14,7 +14,6 @@ export async function POST(request: Request) {
 
     const registeredUser = await registerUserUseCase.execute(validatedData.name, validatedData.email);
 
-    // DTOからプレゼンテーション層のレスポンス型に変換
     const userResponse: UserResponse = {
       name: registeredUser.name,
       email: registeredUser.email
@@ -61,4 +60,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-} 
+}

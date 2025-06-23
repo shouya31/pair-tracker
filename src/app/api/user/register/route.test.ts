@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server';
 import { POST } from './route';
-import { registerUserUseCase } from '@/server/usecases';
 import { UserDTO } from '@/application/user/dto/UserDTO';
 import { UserAlreadyExistsError } from '@/domain/user/errors/UserValidationError';
+import { registerUserUseCase } from '@/server/usecases';
 
 jest.mock('@/server/usecases', () => ({
   registerUserUseCase: {
@@ -16,7 +16,7 @@ describe('ユーザー登録API', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    registerUserUseCase.execute = mockExecute;
+    (registerUserUseCase.execute as jest.Mock) = mockExecute;
   });
 
   describe('正常系', () => {
