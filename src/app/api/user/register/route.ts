@@ -54,7 +54,6 @@ export async function POST(request: Request) {
       );
     }
 
-    console.error('Unexpected error:', error);
     const unexpectedError = new UnexpectedError(error instanceof Error ? error : undefined);
     return NextResponse.json(
       { error: unexpectedError.message },

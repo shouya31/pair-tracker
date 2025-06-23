@@ -80,7 +80,7 @@ describe('POST /api/teams', () => {
 
   it('エラー：チーム名が3文字を超える', async () => {
     const requestBody = {
-      name: 'ABCD',
+      name: 'ABC',
       memberIds: ['user1', 'user2', 'user3'],
     };
 
