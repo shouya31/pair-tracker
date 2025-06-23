@@ -4,14 +4,69 @@
 このドキュメントは、本プロジェクトにおけるソフトウェアアーキテクチャの指針を定めるものです。すべてのコードは、ここに記述されたドメイン駆動設計（DDD）およびクリーンアーキテクチャの原則に従って実装される必要があります。
 ### 2-1. 設計思想：関心の分離と「豊かなドメインモデル」
 
-本プロジェクトのアーキテクチャは、**関心の分離（Separation of Concerns）**を徹底し、**システムの核となるビジネスルール（ドメイン）を、技術的な詳細（UI、データベースなど）から完全に保護する**ことを目的としています。
+本プロジェクトのアーキテクチャは、**関心の分離（Separation of Concerns）** を徹底し、**システムの核となるビジネスルール（ドメイン）を、技術的な詳細（UI、データベースなど）から完全に保護する**ことを目的としています。
 
 これにより、以下のメリットを実現します。
 * **保守性**: ビジネスルールを変更する際、UIやデータベースの実装を気にする必要がありません。
 * **テスト容易性**: ドメインロジックを、UIやデータベースから独立した純粋なユニットテストで検証できます。
 * **拡張性**: データベースをPostgreSQLから別のものに切り替えたり、APIをGraphQLに拡張したりする場合でも、ドメイン層への影響を最小限に抑えられます。
 
-この目的を達成するため、本プロジェクトでは**オニオンアーキテクチャ**の考え方を採用し、ビジネスロジックを内包した**「豊かなドメインモデル」**の構築を目指します。
+この目的を達成するため、本プロジェクトでは**オニオンアーキテクチャ**の考え方を採用し、ビジネスロジックを内包した **「豊かなドメインモデル」** の構築を目指します。
+
+## 2-1. アーキテクチャ概要
+本プロジェクトでは、以下の4層からなるレイヤードアーキテクチャを採用します。
+
+### 依存関係の原則
+依存関係は、**常に外側のレイヤーから内側のレイヤーに向かいます。** 内側のレイヤーは、外側のレイヤーについて一切知りません。
+
+
+```mermaid
+graph TD
+    subgraph "依存の流れ"
+        A[Presentation層] --> B[Application層]
+        B --> C[Domain層]
+        D[Infrastructure層]  --> C
+    end
+```
+
+* **Presentation層**: UIやAPIエンドポイント。`Application`層を利用する。
+* **Application層**: ユースケース。`Domain`層を利用する。
+* **Infrastructure層**: DBアクセスなど。`Domain`層で定義されたインターフェースを実装する。
+* **Domain層**: ビジネスの核。どのレイヤーにも依存しない。
+
+### 例外
+例外的に、「データの構造や型定義」に限って、より内側のレイヤーをimportすることを許容する場合もあります。
+
+例えば、カスタムエラーのハンドリングの場合、Presentation層（APIルート）の重要な責務の一つに、「UseCaseからスローされたエラーを解釈し、適切なHTTPステータスコードに変換して返す」というものがあります。
+これを実現するためには、catchブロックでエラーの型を具体的に知る必要があります。その場合でも、Domain層のエンティティ（振る舞いを持つクラス）やリポジトリを直接利用することは固く禁止します。
+
+```ts
+// app/api/teams/route.ts
+
+// ★ Domain層で定義されたエラー型を直接importしている
+import { TeamNameValidationError } from '@/domain/team/errors/TeamNameValidationError';
+import { DuplicateTeamNameError } from '@/application/team/errors/TeamErrors';
+
+export async function POST(req: Request) {
+  try {
+    // ...
+    await createTeamUseCase.execute(...);
+    // ...
+  } catch (error) {
+    // ★ Domain層の型を直接知ることで、具体的なエラーハンドリングが可能になる
+    if (error instanceof TeamNameValidationError) {
+      return NextResponse.json({ ... }, { status: 400 });
+    }
+    // Application層の型を知ることで、具体的なエラーハンドリングが可能になる
+    if (error instanceof DuplicateTeamNameError) {
+      return NextResponse.json({ ... }, { status: 409 });
+    }
+    // ...
+  }
+}
+```
+
+
 
 ### 2-2. レイヤー構造とデータの流れ
 
@@ -29,114 +84,346 @@ sequenceDiagram
     Client->>+Presentation: 1. POST /api/teams (HTTPリクエスト)
     Note over Presentation: zodでリクエストの「形」を検証
     Presentation->>+Application: 2. execute({ name, memberIds })
+
     Application->>+Infrastructure: 3. findByName(teamName)
     Infrastructure->>+DB: クエリ実行
     DB-->>-Infrastructure: 存在しない
     Infrastructure-->>-Application: null
+
     Application->>+Domain: 4. Team.create(teamName, members)
     Note over Domain: ビジネスルールを検証<br>イベントを内部で生成
-    Domain-->>-Application: Team集約インスタンス
+    Domain-->>-Application: teamインスタンス
+
     Application->>+Infrastructure: 5. save(team)
     Infrastructure->>+DB: トランザクション実行 (INSERT/UPDATE)
     DB-->>-Infrastructure: 永続化成功
     Infrastructure-->>-Application: void
-    Application->>+Infrastructure: 6. eventBus.dispatch(events)
-    Infrastructure-->>-Application: イベント発行
+
+    Note over Application: 6. 永続化後、UseCase(src/server/usecases.ts)がイベントを発行し、後続処理を委譲
+
     Application-->>-Presentation: 7. DTOまたはvoid
     Presentation-->>-Client: 8. 201 Created (HTTPレスポンス)
 ```
 
-## 2. アーキテクチャ概要
-本プロジェクトでは、以下の4層からなるレイヤードアーキテクチャを採用します。
-
-### 依存関係の原則
-依存関係は、**常に外側のレイヤーから内側のレイヤーに向かいます。** 内側のレイヤーは、外側のレイヤーについて一切知りません。
-
-※ただし、依存関係の注入(DI)によって、外側のレイヤーが内側のレイヤーのことを知っている（依存している）場合はあります。
-
-```mermaid
-graph TD
-    subgraph "依存の流れ"
-        A[Presentation層] --> B[Application層]
-        B --> C[Domain層]
-        D[Infrastructure層]  --> C
-    end
-```
-
-* **Presentation層**: UIやAPIエンドポイント。`Application`層を利用する。
-* **Application層**: ユースケース。`Domain`層を利用する。
-* **Infrastructure層**: DBアクセスなど。`Domain`層で定義されたインターフェースを実装する。
-* **Domain層**: ビジネスの核。どのレイヤーにも依存しない。
-
 ## 3. レイヤーごとの実装ルール
 
 ### 3-1. Domain層
-**責務**: ビジネスルールの核心。このアプリケーションが「何であるか」を定義する。
+#### 責務: ビジネスルールの核心。このアプリケーションが「何であるか」を定義する。
 
-**配置場所**: `src/domain/`
+#### 配置場所: `src/domain/`
 
-* **構成要素**:
+#### 構成要素:
     * **エンティティ**: 一意なIDで識別され、状態と振る舞いを持つオブジェクト (`User`, `Team`など)。
     * **値オブジェクト (VO)**: 値そのものが意味を持つ不変のオブジェクト (`Email`, `TeamName`など)。
     * **リポジトリのインターフェース**: データの永続化に関する「契約書」 (`IUserRepository`など)。
 
-* **実装ルール**:
-    1.  **依存の禁止**: 他のどのレイヤー（`application`, `presentation`, `infrastructure`）のファイルも`import`してはならない。
-    2.  **外部ライブラリの禁止**: `Prisma`や`zod`、`Next.js`のAPIなど、フレームワークや外部ライブラリに依存するコードを記述してはならない。
-    3.  **エンティティの生成**: `constructor`は`private`とし、必ず`create`（新規作成）や`rebuild`（再構築）といった静的ファクトリメソッド経由で生成する。
-    4.  **不変条件の保護**: エンティティや値オブジェクトの不変条件（例: 名前の文字数制限）は、ファクトリメソッドやコンストラクタ内で検証し、違反する場合はドメイン固有のカスタムエラーをスローする。
+
+#### 実装ルール:
+**1. フレームワーク・ライブラリからの完全な独立**<br>
+- ルール: Prisma, zod, Next.jsのAPIなど、外部の技術やライブラリを一切importしてはなりません。この層は、純粋なTypeScriptのみで記述されるべきです。
+- 理由: ビジネスの核であるドメイン層を、UIやデータベースといった技術的な決定から完全に隔離するためです。これにより、将来データベースを別のものに交換しても、ドメイン層のコードは一切変更する必要がありません。
+
+**2. 値オブジェクトによる「型」と「制約」の表現**<br>
+- ルール: stringやnumberといったプリミティブ型を直接使うのではなく、ビジネス上の意味と制約を持つ値オブジェクト（VO）として定義します。VOの生成は、検証ロジックを内包したpublic static createファクトリメソッドに限定し、コンストラクタはprivateにします。
+- 理由: 不正な値を持つドメインオブジェクトの存在をコンパイルレベルで防ぎ、システムの堅牢性を高めます。
+
+**3. 集約ルートによる整合性の保護**
+- ルール: 集約ルート（TeamやUserエンティティ）は、自身の状態を変更するメソッド内で、ビジネスルール（不変条件）を必ず検証します。これにより、集約は常に正しい状態が保たれます。
+- 理由: ドメインの整合性を保証する責任を集約ルートに集中させることで、ロジックが分散せず、見通しの良い設計になります。
+```ts
+// src/domain/team/Team.ts
+export class Team extends AggregateRoot {
+  // ...
+  public removeMember(memberIdToRemove: string): void {
+    // ... メンバー存在チェック ...
+
+    const updatedMemberCount = this.members.count() - 1;
+    if (updatedMemberCount < 3) {
+      // 自身の不変条件（最低3名）を検証し、違反すればエラーを投げる
+      throw TeamBusinessRuleError.memberCountNotMet(updatedMemberCount);
+    }
+
+    this.members = this.members.remove(memberIdToRemove);
+    this.addDomainEvent(new TeamMemberRemoved(this.teamId, memberIdToRemove));
+  }
+}
+```
+**4. イベントは不変の「事実」として設計する**
+- ルール: イベントは過去に起きた出来事を表すため、一度生成されたら状態が変わらないようにreadonlyプロパティで設計し、TeamCreatedのように過去形の名前を付けます。
+- 理由: イベントは「起きてしまったこと」の記録であり、後から内容が変更されてはならないためです。
+```ts
+// src/domain/team/events/TeamCreated.ts
+import { DomainEvent } from '../../shared/DomainEvent';
+
+export class TeamCreated implements DomainEvent {
+  public readonly occurredAt: Date;
+
+  constructor(
+    public readonly teamId: string,
+    public readonly teamName: string,
+    public readonly memberIds: string[]
+  ) {
+    this.occurredAt = new Date();
+  }
+}
+```
+
+**5. ドメインイベントの生成は集約ルートの責務とする**
+- ルール: エンティティの状態が変化するメソッド（例: team.removeMember()）の内部で、対応するイベントを生成し、集約ルートが持つイベントリストに追加します。
+- 理由: ビジネスロジックの実行と、それが引き起こした「事実（イベント）」の発生を常に一対に保ち、整合性を保証するためです。
+- 補足: イベントを実際に発行（ディスパッチ）するのはApplication層の責務です。Domain層はイベントを生成するだけで、それがどのように使われるかを知りません。
+```ts
+// src/domain/team/Team.ts
+import { AggregateRoot } from '../shared/AggregateRoot';
+
+export class Team extends AggregateRoot {
+  // ...
+  public removeMember(memberIdToRemove: string): void {
+    // ... メンバー削除のビジネスロジック ...
+
+    this.members = this.members.remove(memberIdToRemove);
+
+    // 自身の状態変更に伴い、イベントを生成して追加する
+    this.addDomainEvent(new TeamMemberRemoved(this.teamId, memberIdToRemove));
+  }
+}
+```
 
 ---
 
 ### 3-2. Application層 (Use Case層)
-**責務**: ユースケース（ユーザーがシステムで何を行いたいか）の実現。ドメイン層とインフラ層の協調。
+#### 責務: ユースケース（ユーザーがシステムで何を行いたいか）の実現。ドメイン層とインフラ層の協調。
 
-**配置場所**: `src/application/`
+#### **配置場所**: `src/application/`
 
-* **構成要素**:
+#### **構成要素**:
     * **ユースケースクラス**: １つのパブリックメソッド（`execute`）を持つクラス (`RegisterUserUseCase`など)。
     * **DTO (Data Transfer Object)**: Presentation層にデータを渡すための、メソッドを持たない純粋なデータの入れ物 (`UserDTO`など)。
 
-* **実装ルール**:
-    1.  **依存の方向**: `Domain`層にのみ依存する。`Presentation`層や`Infrastructure`層の具体的な実装を知ってはならない。
-    2.  **入出力の定義**:
-        * **入力**: `Presentation`層からプリミティブな値（`string`, `number`など）を受け取る。
-        * **出力**: 成功した場合はDTOを返し、失敗した場合はビジネスルール違反を示すカスタムエラーをスローする。
-    3.  **責務**: HTTPステータスコードやレスポンス形式など、プレゼンテーション層の関心事を知ってはならない。
-    4.  **ロジック**: ドメインオブジェクトを生成・利用してビジネスフローを組み立て、結果をリポジトリ（のインターフェース）経由で永続化する。
+#### **実装ルール**:
+**1.ビジネスロジックはDomain層に委譲する**<br>
+- ルール: UseCaseは、ビジネスルールの詳細を自身で実装してはなりません。ドメインオブジェクトを取得し、そのメソッドを呼び出すことに徹します。
+- 理由: ドメインの知識をドメイン層に集約し、「豊かなドメインモデル」を維持するためです。
+- 悪い例：
+```ts
+// src/application/team/usecases/RemoveMemberFromTeamUseCase.ts
+export class RemoveMemberFromTeamUseCase {
+  async execute(teamId: string, memberId: string): Promise<void> {
+    const team = await this.teamRepository.findById(teamId);
+    // ...
+    // NG! 本来はTeamエンティティが持つべきビジネスルール
+    if (team.getMemberIds().length - 1 < 3) {
+      throw new Error('メンバーは3人未満にできません');
+    }
+    // ...
+  }
+}
+
+```
+
+**2. 集約をまたぐルールはUseCaseが調整する**
+- ルール: ある操作の前提条件として、複数の集約の状態を確認する必要がある場合、その調整はUseCaseが担当します。
+- 理由: 各集約は他の集約の内部状態を知るべきではないため、両方の集約を利用できるUseCaseが調整役を担うのが最適です。
+```ts
+// src/application/team/usecases/CreateTeamUseCase.ts
+export class CreateTeamUseCase {
+  async execute(name: string, memberIds: string[]): Promise<void> {
+    // ... チーム名重複チェック ...
+
+    // User集約とTeam集約をまたぐルールを調整
+    const users = await this.userRepository.findByIds(memberIds);
+    const nonEnrolledUser = users.find(user => !user.isEnrolled());
+    if (nonEnrolledUser) {
+      throw new InvalidUserStatusError(...); // 前提条件エラー
+    }
+
+    const team = Team.create(TeamName.create(name), ...);
+    await this.teamRepository.save(team);
+  }
+}
+```
+
+**3. 依存関係はインターフェースにのみ依存する**
+- ルール: UseCaseは、Infrastructure層の具象クラス（UserRepositoryPrismaなど）に依存してはなりません。必ずDomain層で定義されたインターフェース（IUserRepositoryなど）にのみ依存します。
+- 理由: Application層を、データベースなどの具体的な技術から完全に独立させるためです（依存性逆転の原則）。
+- 悪い例:
+```ts
+// NG! 具象クラスに依存している
+import { TeamRepositoryPrisma } from '@/infrastructure/repositories/TeamRepositoryPrisma';
+
+export class CreateTeamUseCase {
+  constructor(private readonly teamRepository: TeamRepositoryPrisma) {}
+}
+```
+- 良い例
+```ts
+// OK! インターフェースに依存している
+import { ITeamRepository } from '@/domain/team/ITeamRepository';
+
+export class CreateTeamUseCase {
+  constructor(private readonly teamRepository: ITeamRepository) {}
+}
+```
 
 ---
 
 ### 3-3. Presentation層
-**責務**: ユーザーとのインタラクション。HTTPリクエストの受付とレスポンスの返却。UIの描画。
+#### **責務**:
+システムの唯一の「入口」として、ユーザーや外部クライアントとのインタラクションに責任を持つ。
+主な仕事は、HTTPリクエストを解釈してApplication層に渡し、その結果を解釈してHTTPレスポンスとして返すことで。
 
-**配置場所**: `src/app/`, `src/components/`
+#### **配置場所**: `src/app/`, `src/components/`
 
-* **構成要素**:
+#### * **構成要素**:
     * Next.jsのAPI Routes (`/app/api/...`)
     * Reactコンポーネント
+    * zodスキーマ（リクエスト検証用）
 
-* **実装ルール**:
-    1.  **UseCaseの利用**: DIコンテナ（後述）から完成品のUseCaseインスタンスを取得し、その`execute`メソッドを呼び出す。
-    2.  **Infrastructure層への非依存**: `UserRepositoryPrisma`のような、Infrastructure層の具体的な実装クラスを`import`してはならない。
-    3.  **レスポンスの責務**: UseCaseから返されたDTOやエラーを解釈し、適切なHTTPステータスコードとレスポンスボディ（JSON）を組み立てる。
-    4.  **入力検証**: `zod`を使い、システムの入り口であるAPIエンドポイントで全てのリクエストを検証する。
+#### **実装ルール**:
+**1. ビジネスロジックは全てUseCaseに委譲する**
+- ルール: APIルートは、リクエストの形式をzodで検証した後、即座にApplication層のUseCaseに処理を委譲します。DBへの直接アクセスや、ビジネスルールの実装を決して行ってはなりません。
+- 理由: Presentation層を、ビジネスロジックから切り離された薄い層に保つためです。
+- 悪い例:
+```ts
+// app/api/teams/route.ts
+import { prisma } from '@/lib/prisma'; // NG! prismaに直接依存
+
+export async function POST(req: Request) {
+  const { name } = await req.json();
+  // NG! ビジネスロジックを直接実装
+  const existing = await prisma.team.findUnique({ where: { name } });
+  if (existing) { /* ... */ }
+}
+```
+
+**2. zodによる厳格な入力検証**
+- ルール: 全てのAPIルートは、処理を開始する前に、必ずzodスキーマを使ってリクエストのボディ、パラメータ、クエリ文字列の形式と型を検証しなければならない。
+- 理由: 信頼できない外部からの入力をシステムの入り口で完全に無害化するため。これにより、後続のApplication層やDomain層は、データの「形」が正しいことを信頼して、ビジネスロジックの検証に集中できる。
+- 補足: zodでの検証（例：文字数制限）とDomain層のValueObjectでの検証が重複する場合があるが、これは意図的な設計である。zodは不正なリクエストを早期に弾くための「第一の防御壁」、ValueObjectはドメインの整合性を保証する「最後の砦」として、それぞれが責務を果たす。
+
+
+**3. 結果とエラーをHTTPレスポンスへ責任を持って変換する**
+- ルール: UseCaseから返された結果（成功時のDTOや、失敗時のカスタムエラー）を解釈し、適切なHTTPステータスコードとJSONボディを持つNextResponseオブジェクトを生成して返す。これがPresentation層の最終的な仕事である。
+- 理由: HTTPプロトコルに関する知識と責任を、Presentation層に完全に閉じ込めるため。Application層やDomain層は、HTTPのことを一切意識する必要がない。
+
+**4. 依存関係の厳守**
+- ルール: Presentation層は、原則としてApplication層（のUseCase）にのみ依存する。ただし、以下の例外を許容する。
+  - importして良いもの:
+    - Application層 / Domain層で定義されたカスタムエラーの型（instanceofでの判定のため）
+    - Application層で定義されたDTOの型（レスポンスの型付けのため）
+    - libなどで共有されるzodスキーマ
+  - importしてはならないもの:
+    - Infrastructure層の具象クラス（UserRepositoryPrismaなど）
+    - Domain層の振る舞いを持つクラス（Teamエンティティなど）やリポジトリインターフェース（ITeamRepository）
+- 理由: アーキテクチャのレイヤー間の依存関係を厳格に保ち、システムの疎結合性を維持するため。
+
+
 
 ---
 
 ### 3-4. Infrastructure層
-**責務**: データベースアクセスや外部API連携など、技術的な詳細の実装。
+#### **責務**: データベースアクセスや外部API連携など、技術的な詳細の実装。
 
-**配置場所**: `src/infrastructure/`
+####**配置場所**: `src/infrastructure/`
 
-* **構成要素**:
+#### **構成要素**:
     * リポジトリの実装クラス (`UserRepositoryPrisma`)
     * PrismaClientのインスタンス
 
-* **実装ルール**:
-    1.  **インターフェースの実装**: `Domain`層で定義されたリポジトリのインターフェースを依存(`implements`)させる。
-    2.  **依存の方向**: `Application`層や`Presentation`層に依存してはならない。
-    3.  **データ変換**: ドメインオブジェクト（`User`エンティティなど）と、Prismaが扱うDBモデルの間のデータ変換を行う。
+#### **実装ルール**:
+**1: Domain層のインターフェースを忠実に実装する**
+- ルール: class TeamRepositoryPrisma implements ITeamRepository のように、必ずDomain層で定義されたインターフェースをimplementsし、その契約（メソッド名、引数、戻り値の型）を厳密に守ります。
+- 理由: Application層が具象クラスではなくインターフェースに依存することで、将来DB実装を入れ替えることが可能になります（依存性逆転の原則）。
+- 悪い例:
+```ts
+// IUserRepository.ts
+// findByIdはUser | nullを返すと契約している
+interface IUserRepository {
+  findById(id: string): Promise<User | null>;
+}
+
+// UserRepositoryPrisma.ts
+// NG! 契約違反。Prismaが返す生のオブジェクトをそのまま返してしまっている
+class UserRepositoryPrisma implements IUserRepository {
+  async findById(id: string): Promise</* User | null */ any> {
+    return this.prisma.user.findUnique({ where: { id } });
+  }
+}
+```
+
+**2: ドメインオブジェクトと永続化モデルの変換に責任を持つ**
+- ルール: リポジトリは「翻訳者」です。DBから取得したデータ（Prismaのモデルなど）を、ドメインオブジェクトのrebuildファクトリメソッドを使って再構築します。逆に、saveする際はドメインオブジェクトを分解し、Prismaが理解できる形式に変換します。
+- 理由: この「翻訳」のロジックをリポジトリに集約することで、Domain層は永続化の形式を一切意識する必要がなくなり、純粋性を保てます。
+```ts
+// UserRepositoryPrisma.ts
+class UserRepositoryPrisma implements IUserRepository {
+  async findById(id: string): Promise<User | null> {
+    // 1. DBから永続化モデルを取得
+    const dbUser = await this.prisma.user.findUnique({ where: { id } });
+    if (!dbUser) return null;
+
+    // 2. 「翻訳」処理：永続化モデルを引数に、ドメインオブジェクトを再構築
+    return User.rebuild(
+      dbUser.id,
+      dbUser.name,
+      dbUser.email,
+      dbUser.status as UserStatus
+    );
+  }
+}
+```
+
+**3. ドメインの知識を推測・ハードコーディングしない**
+- ルール: リポジトリは、あくまでDBのデータを忠実にドメインオブジェクトにマッピングするだけであり、「この値はこうあるべきだ」といったビジネスルールを推測して値をハードコーディングしてはなりません。
+- 理由: データの「真実（Single Source of Truth）」は常にデータベースにあります。リポジトリが勝手な解釈でデータを作ると、アプリケーション内でデータ不整合が起き、深刻なバグの原因となります。
+- 悪い例
+```ts
+// UserRepositoryPrisma.ts
+async findById(id: string): Promise<User | null> {
+  const user = await this.prisma.user.findUnique({ where: { id } });
+  if (!user) return null;
+
+  // NG! DBの`user.status`を無視し、「在籍中」というドメインの知識を
+  // リポジトリが推測・ハードコーディングしてしまっている
+  return User.rebuild(user.id, user.name, user.email, UserStatus.Enrolled);
+}
+```
+
+- 良い例
+```ts
+// UserRepositoryPrisma.ts
+async findById(id: string): Promise<User | null> {
+  const user = await this.prisma.user.findUnique({ where: { id } });
+  if (!user) return null;
+  // OK! DBから取得した`user.status`をそのまま使って再構築する
+  return User.rebuild(user.id, user.name, user.email, user.status as UserStatus);
+}
+```
+
+**4. 効率的で安全なデータ更新戦略を採用する**
+- ルール: 関連を持つデータの更新時、特にコレクション（例：チームメンバー）の更新では、安易な「全削除・全再作成」方式を避け、差分更新やORMの機能を活用した安全な方法を採用します。
+- 理由: 「全削除・全再作成」は、パフォーマンスの悪化や、中間テーブルが持つ情報（参加日時など）のデータ損失に繋がるためです。
+- 悪い例:
+```ts
+// TeamRepositoryPrisma.ts saveメソッド内
+// NG! 既存メンバーを全員削除し、新しいリストで再作成している
+await tx.teamUser.deleteMany({ where: { teamId } });
+await tx.teamUser.createMany({ data: newMembers.map(...) });
+```
+- 良い例
+```ts
+// TeamRepositoryPrisma.ts saveメソッド内
+// OK! 現在の状態と比較し、追加・削除するメンバーの差分のみを更新している
+const currentMemberIds = ...;
+const newMemberIds = ...;
+
+const membersToAdd = newMemberIds.filter(id => !currentMemberIds.has(id));
+const membersToRemove = Array.from(currentMemberIds).filter(id => !newMemberIds.includes(id));
+
+await tx.teamUser.deleteMany({ where: { teamId, userId: { in: membersToRemove } } });
+await tx.teamUser.createMany({ data: membersToAdd.map(...) });
+```
+
 
 ## 4. 依存関係の解決
 オブジェクトの生成と依存関係の注入（DI）は、アプリケーション全体で一箇所に集約する。
@@ -165,6 +452,96 @@ export async function POST(req: Request) {
   // ...
 }
 ```
+
+## 4. 依存関係の解決 (Dependency Injection)
+
+### 4-1. 原則: Composition Rootによる一元管理
+
+本プロジェクトでは、オブジェクトの生成と、それらの間の依存関係の注入（Dependency Injection, DI）は、アプリケーション内のただ一つの場所（**Composition Root**）に集約します。
+
+* **場所**: `src/server/usecases.ts`
+* **役割**: アプリケーション起動時に、`PrismaClient`、全てのリポジトリ、全てのUseCaseのインスタンスを生成し、必要な依存関係を解決（「配線」）します。
+* **ルール**: `Presentation`層などの利用側は、ここで組み立てられた完成品の`UseCase`インスタンスを`import`して利用するだけにします。
+
+### 4-2. 課題: なぜこのルールが必要か？
+
+もしこのルールがない場合、`Presentation`層など、オブジェクトを**利用する側**が、そのオブジェクトの**生成方法**まで知る必要が生まれます。
+
+```typescript
+// ルールがない場合の悪い例: Presentation層での直接生成
+// /src/app/api/users/route.ts
+
+import { UserRepositoryPrisma } from "../../../infrastructure/repositories/UserRepositoryPrisma";
+import { RegisterUserUseCase } from "../../../application/user/usecases/RegisterUserUseCase";
+import { PrismaClient } from "@prisma/client";
+
+export async function POST(req: Request) {
+  // 使う場所で、依存オブジェクトを自分で組み立てている
+  const prisma = new PrismaClient(); // 非効率！
+  const userRepository = new UserRepositoryPrisma(prisma);
+  const registerUserUseCase = new RegisterUserUseCase(userRepository, /* eventBusは？ */);
+
+  const user = await registerUserUseCase.execute(...);
+  // ...
+}
+```
+この「利用側での直接生成」には、以下のような深刻な問題があります。
+
+- 密結合: Presentation層がApplication層とInfrastructure層の具体的な実装（UserRepositoryPrismaなど）に強く依存してしまいます。これでは、リポジトリの実装を変更しただけで、それを呼び出している全てのAPIルートを修正する必要が生まれます。
+- 責務の混在: Presentation層は本来HTTPの処理に集中すべきなのに、「オブジェクトを組み立てる」という、アプリケーション全体の構成に関する知識まで持つことになり、責務が肥大化します。
+- インスタンス管理の破綻: PrismaClientのように、アプリケーション全体で一つであるべきインスタンス（シングルトン）を、リクエストのたびにnewしてしまい、パフォーマンスの悪化やリソースの枯渇を招きます。
+- テストの困難さ: UseCaseとリポジトリが固く結びついているため、テスト時にリポジトリだけをモックに差し替える、といったことが非常に困難になります。
+
+### 4-3. 解決策: 本プロジェクトにおける実装
+上記の課題を解決するため、src/server/usecases.tsが「オブジェクトの組み立て工場」としての全責任を負います。
+
+```ts
+// 良い例: src/server/usecases.ts
+
+import { PrismaClient } from '@prisma/client';
+import { TeamRepositoryPrisma } from '@/infrastructure/repositories/TeamRepositoryPrisma';
+import { UserRepositoryPrisma } from '@/infrastructure/repositories/UserRepositoryPrisma';
+import { CreateTeamUseCase } from '@/application/team/usecases/CreateTeamUseCase';
+import { IEventBus } from '@/domain/shared/IEventBus';
+// ... 他のUseCaseやハンドラーのimport
+
+// 1. アプリケーション全体で共有するインスタンスを生成
+const prisma = new PrismaClient();
+// アプリケーション終了時に接続を閉じる
+process.on('beforeExit', async () => {
+  await prisma.$disconnect();
+});
+
+// 2. イベントバスのシンプルな実装を作成
+const eventBus: IEventBus = { /* ... dispatchロジック ... */ };
+
+// 3. リポジトリの具象クラスをインスタンス化
+const teamRepository = new TeamRepositoryPrisma(prisma);
+const userRepository = new UserRepositoryPrisma(prisma);
+
+// 4. UseCaseに必要な依存（リポジトリ、イベントバス等）を注入してインスタンス化
+const createTeamUseCaseInstance = new CreateTeamUseCase(
+  teamRepository,
+  userRepository,
+  eventBus
+);
+
+
+// 5. 完成品のUseCaseインスタンスをexportする
+export const createTeamUseCase = createTeamUseCaseInstance;
+// ... 他のUseCaseも同様にexport
+```
+この方法により、Presentation層はオブジェクトの複雑な生成過程を一切知ることなく、import { createTeamUseCase }とするだけで、即座に利用可能な完成品を手に入れることができます。
+
+### 4-4. 代替案（参考）
+依存関係を解決するアプローチは他にも存在します。ただ、いずれも管理コストが高くなる理由から見送っています。
+
+- DIライブラリの利用:
+  - tsyringeやInversifyJS、NestJSのDI機能のような、依存性の注入を専門に行うライブラリを利用する方法。大規模で依存関係が非常に複雑な場合に強力ですが、ライブラリへの学習コストと依存が発生します。
+- 手動DIコンテナクラスの作成:
+  - registerやresolveといったメソッドを持つDiContainerクラスを自前で作成する方法。ライブラリに近い機能を持ちつつ、外部依存をなくせますが、自前で管理するコードが増えます。
+
+
 ## 5. `zod`の利用ルール
 `zod`は、信頼できない外部からのデータを検証する「門番」として利用する。
 
