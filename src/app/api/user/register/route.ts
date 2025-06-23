@@ -10,9 +10,13 @@ import type { UserResponse } from '@/presentation/types/responses/UserResponse';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    console.log('Received registration request:', body);
+
     const validatedData = registerUserSchema.parse(body);
+    console.log('Validated data:', validatedData);
 
     const registeredUser = await registerUserUseCase.execute(validatedData.name, validatedData.email);
+    console.log('User registered successfully:', registeredUser);
 
     const userResponse: UserResponse = {
       name: registeredUser.name,
@@ -28,6 +32,8 @@ export async function POST(request: Request) {
     );
 
   } catch (error) {
+    console.error('Error in user registration:', error);
+
     if (error instanceof ZodError) {
       const firstError = error.errors[0];
       return NextResponse.json(
@@ -63,6 +69,7 @@ export async function POST(request: Request) {
     }
 
     const unexpectedError = new UnexpectedError(error instanceof Error ? error : undefined);
+    console.error('Unexpected error details:', error);
     return NextResponse.json(
       { error: unexpectedError.message },
       { status: 500 }

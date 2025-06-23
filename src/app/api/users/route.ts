@@ -1,18 +1,19 @@
 import { NextResponse } from 'next/server';
 import { getUsersUseCase } from '@/server/usecases';
+import { UnexpectedError } from '@/domain/shared/errors/SystemError';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET() {
   try {
     const users = await getUsersUseCase.execute();
-    return NextResponse.json(users);
+    return NextResponse.json({ users });
   } catch (error) {
-    console.error('GET /api/users: Error:', error);
+    const unexpectedError = new UnexpectedError(error instanceof Error ? error : undefined);
     return NextResponse.json(
-      { 
-        message: 'ユーザーの取得に失敗しました',
-        details: error instanceof Error ? error.message : undefined
+      {
+        error: unexpectedError.message
       },
       { status: 500 }
     );

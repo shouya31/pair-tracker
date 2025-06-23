@@ -8,12 +8,13 @@ interface User {
 }
 
 async function getUsers() {
-  const headersList = await headers();
-  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
-  const host = headersList.get('host') || 'localhost:3000';
+  // サーバーサイドとクライアントサイドで異なるURLを使用
+  const API_URL = typeof window === 'undefined'
+    ? 'http://app:3000/api/users'  // サーバーサイド（Docker環境内）
+    : '/api/users';                 // クライアントサイド（ブラウザ）
 
   try {
-    const res = await fetch(`${protocol}://${host}/api/users`, {
+    const res = await fetch(API_URL, {
       cache: 'no-store',
       next: { revalidate: 0 }
     });
@@ -61,7 +62,8 @@ export default async function UsersPage() {
   let error: string | null = null;
 
   try {
-    users = await getUsers();
+    const data = await getUsers();
+    users = data.users;
   } catch (e) {
     error = e instanceof Error ? e.message : 'ユーザーの取得に失敗しました';
   }
@@ -82,39 +84,17 @@ export default async function UsersPage() {
           ユーザーが登録されていません
         </div>
       ) : (
-        <div className="bg-white shadow-md rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  名前
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  メールアドレス
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ステータス
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{user.email}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(user.status)}`}>
-                      {getStatusText(user.status)}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {users.map((user) => (
+            <div
+              key={user.id}
+              className="bg-white shadow-lg rounded-lg p-6 hover:shadow-xl transition-shadow"
+            >
+              <h2 className="text-xl font-semibold mb-4">{user.name}</h2>
+              <p className="text-gray-600 mb-2">{user.email}</p>
+              <p className="text-sm text-gray-500">ステータス: {user.status}</p>
+            </div>
+          ))}
         </div>
       )}
     </div>

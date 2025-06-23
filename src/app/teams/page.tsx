@@ -10,12 +10,13 @@ interface Team {
 }
 
 async function getTeams() {
-  const headersList = await headers();
-  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
-  const host = headersList.get('host') || 'localhost:3000';
+  // サーバーサイドとクライアントサイドで異なるURLを使用
+  const API_URL = typeof window === 'undefined'
+    ? 'http://app:3000/api/teams'  // サーバーサイド（Docker環境内）
+    : '/api/teams';                 // クライアントサイド（ブラウザ）
 
   try {
-    const res = await fetch(`${protocol}://${host}/api/teams`, {
+    const res = await fetch(API_URL, {
       cache: 'no-store',
       next: { revalidate: 0 }
     });
