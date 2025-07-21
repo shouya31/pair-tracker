@@ -3,6 +3,7 @@ import { IUserRepository } from '../../domain/user/IUserRepository';
 import { User } from '../../domain/user/User';
 import { Email } from '../../domain/shared/Email';
 import { UserStatus } from '../../domain/user/enums/UserStatus';
+import { rebuildUser, getUserId, getUserEmail, getUserName, getUserStatus } from '../../domain/user/User';
 
 export class UserRepositoryPrisma implements IUserRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -18,7 +19,7 @@ export class UserRepositoryPrisma implements IUserRepository {
       return null;
     }
 
-    return User.rebuild(
+    return rebuildUser(
       user.id,
       user.name,
       user.email,
@@ -37,7 +38,7 @@ export class UserRepositoryPrisma implements IUserRepository {
       return null;
     }
 
-    return User.rebuild(
+    return rebuildUser(
       user.id,
       user.name,
       user.email,
@@ -48,20 +49,20 @@ export class UserRepositoryPrisma implements IUserRepository {
   async save(user: User): Promise<void> {
     await this.prisma.user.upsert({
       where: {
-        id: user.getUserId(),
+        id: getUserId(user),
       },
       create: {
-        id: user.getUserId(),
-        email: user.getEmail(),
-        name: user.getName(),
-        status: user.getStatus(),
+        id: getUserId(user),
+        email: getUserEmail(user),
+        name: getUserName(user),
+        status: getUserStatus(user),
         createdAt: new Date(),
         updatedAt: new Date(),
       },
       update: {
-        email: user.getEmail(),
-        name: user.getName(),
-        status: user.getStatus(),
+        email: getUserEmail(user),
+        name: getUserName(user),
+        status: getUserStatus(user),
         updatedAt: new Date(),
       },
     });
@@ -76,7 +77,7 @@ export class UserRepositoryPrisma implements IUserRepository {
       }
     });
 
-    return users.map(user => User.rebuild(
+    return users.map(user => rebuildUser(
       user.id,
       user.name,
       user.email,
@@ -86,8 +87,8 @@ export class UserRepositoryPrisma implements IUserRepository {
 
   async findAll(): Promise<User[]> {
     const users = await this.prisma.user.findMany();
-    return users.map(user => 
-      User.rebuild(
+    return users.map((user: any) =>
+      rebuildUser(
         user.id,
         user.name,
         user.email,

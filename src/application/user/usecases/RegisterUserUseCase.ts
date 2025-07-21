@@ -1,4 +1,4 @@
-import { User } from '@/domain/user/User';
+import { createUser, getUserName, getUserEmail } from '@/domain/user/User';
 import { IUserRepository } from '@/domain/user/IUserRepository';
 import { UserDTO } from '../dto/UserDTO';
 import { UserDomainError } from '@/domain/user/errors/UserDomainError';
@@ -14,12 +14,12 @@ export class RegisterUserUseCase {
       throw UserDomainError.alreadyExists(email);
     }
 
-    const user = User.create(name, email);
+    const user = createUser(name, email);
     await this.userRepository.save(user);
 
     return new UserDTO(
-      user.getName(),
-      user.getEmail()
+      getUserName(user),
+      getUserEmail(user)
     );
   }
 }
