@@ -3,6 +3,7 @@ import { UserRepositoryPrisma } from './UserRepositoryPrisma';
 import { User } from '../../domain/user/User';
 import { Email } from '../../domain/shared/Email';
 import { UserStatus } from '../../domain/user/enums/UserStatus';
+import { createUser, rebuildUser, getUserId, getUserName, getUserEmail } from '../../domain/user/User';
 
 describe('UserRepositoryPrisma', () => {
   let prisma: PrismaClient;
@@ -24,24 +25,24 @@ describe('UserRepositoryPrisma', () => {
 
   describe('save', () => {
     test('新規ユーザーを保存できる', async () => {
-      const user = User.create('テストユーザー', 'test@example.com');
+      const user = createUser('テストユーザー', 'test@example.com');
       await repository.save(user);
 
       const savedUser = await prisma.user.findUnique({
-        where: { id: user.getUserId() },
+        where: { id: getUserId(user) },
       });
 
       expect(savedUser).not.toBeNull();
-      expect(savedUser?.name).toBe('テストユーザー');
-      expect(savedUser?.email).toBe('test@example.com');
+      expect(savedUser?.name).toBe(getUserName(user));
+      expect(savedUser?.email).toBe(getUserEmail(user));
     });
 
     test('既存ユーザーを更新できる', async () => {
-      const user = User.create('テストユーザー', 'test@example.com');
+      const user = createUser('テストユーザー', 'test@example.com');
       await repository.save(user);
 
-      const updatedUser = User.rebuild(
-        user.getUserId(),
+      const updatedUser = rebuildUser(
+        getUserId(user),
         '更新後ユーザー',
         'updated@example.com',
         UserStatus.Enrolled
@@ -49,7 +50,7 @@ describe('UserRepositoryPrisma', () => {
       await repository.save(updatedUser);
 
       const savedUser = await prisma.user.findUnique({
-        where: { id: user.getUserId() },
+        where: { id: getUserId(user) },
       });
 
       expect(savedUser).not.toBeNull();
@@ -63,14 +64,14 @@ describe('UserRepositoryPrisma', () => {
 
   describe('findByEmail', () => {
     test('メールアドレスで既存のユーザーを検索できる', async () => {
-      const user = User.create('テストユーザー', 'test@example.com');
+      const user = createUser('テストユーザー', 'test@example.com');
       await repository.save(user);
 
       const foundUser = await repository.findByEmail(Email.create('test@example.com'));
 
       expect(foundUser).not.toBeNull();
-      expect(foundUser?.getName()).toBe('テストユーザー');
-      expect(foundUser?.getEmail()).toBe('test@example.com');
+      expect(getUserName(foundUser!)).toBe('テストユーザー');
+      expect(getUserEmail(foundUser!)).toBe('test@example.com');
     });
 
     test('存在しないメールアドレスの場合はnullを返す', async () => {

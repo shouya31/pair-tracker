@@ -4,6 +4,7 @@ import { Team } from '../../../domain/team/Team';
 import { TeamName } from '../../../domain/team/vo/TeamName';
 import { DuplicateTeamNameError, UserNotFoundError, InvalidUserStatusError } from '../errors/TeamErrors';
 import { UserStatus } from '../../../domain/user/enums/UserStatus';
+import { getUserStatus, getUserId, getUserName } from '../../../domain/user/User';
 
 interface CreateTeamUseCaseInput {
   name: string;
@@ -25,19 +26,19 @@ export class CreateTeamUseCase {
 
     const users = await this.userRepository.findByIds(input.memberIds);
     if (users.length !== input.memberIds.length) {
-      const foundUserIds = new Set(users.map(u => u.getUserId()));
+      const foundUserIds = new Set(users.map(u => getUserId(u)));
       const notFoundId = input.memberIds.find(id => !foundUserIds.has(id));
       throw new UserNotFoundError(notFoundId!);
     }
 
-    const nonEnrolledUser = users.find(user => user.getStatus() !== UserStatus.Enrolled);
+    const nonEnrolledUser = users.find(user => getUserStatus(user) !== UserStatus.Enrolled);
     if (nonEnrolledUser) {
-      throw new InvalidUserStatusError(nonEnrolledUser.getName(), nonEnrolledUser.getStatus());
+      throw new InvalidUserStatusError(getUserName(nonEnrolledUser), getUserStatus(nonEnrolledUser));
     }
 
     const team = Team.create(teamName, users.map(user => ({
-      id: user.getUserId(),
-      name: user.getName()
+      id: getUserId(user),
+      name: getUserName(user)
     })));
 
     await this.teamRepository.save(team);

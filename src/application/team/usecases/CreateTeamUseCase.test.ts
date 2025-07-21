@@ -1,7 +1,7 @@
 import { CreateTeamUseCase } from './CreateTeamUseCase';
 import { ITeamRepository } from '../../../domain/team/ITeamRepository';
 import { IUserRepository } from '../../../domain/user/IUserRepository';
-import { User } from '../../../domain/user/User';
+import { rebuildUser } from '../../../domain/user/User';
 import { UserStatus } from '../../../domain/user/enums/UserStatus';
 import { DuplicateTeamNameError, UserNotFoundError, InvalidUserStatusError } from '../errors/TeamErrors';
 import { Team } from '../../../domain/team/Team';
@@ -12,10 +12,10 @@ describe('CreateTeamUseCase', () => {
   let useCase: CreateTeamUseCase;
 
   const mockUsers = [
-    User.rebuild('1', 'User 1', 'user1@example.com', UserStatus.Enrolled),
-    User.rebuild('2', 'User 2', 'user2@example.com', UserStatus.Enrolled),
-    User.rebuild('3', 'User 3', 'user3@example.com', UserStatus.Suspended),
-    User.rebuild('4', 'User 4', 'user4@example.com', UserStatus.Enrolled),
+    rebuildUser('1', 'User 1', 'user1@example.com', UserStatus.Enrolled),
+    rebuildUser('2', 'User 2', 'user2@example.com', UserStatus.Enrolled),
+    rebuildUser('3', 'User 3', 'user3@example.com', UserStatus.Suspended),
+    rebuildUser('4', 'User 4', 'user4@example.com', UserStatus.Enrolled),
   ];
 
   beforeEach(() => {

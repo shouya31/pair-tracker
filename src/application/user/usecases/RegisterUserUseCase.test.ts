@@ -1,6 +1,6 @@
 import { RegisterUserUseCase } from './RegisterUserUseCase';
 import { IUserRepository } from '../../../domain/user/IUserRepository';
-import { User } from '../../../domain/user/User';
+import { createUser, rebuildUser, getUserName, getUserEmail } from '../../../domain/user/User';
 import { UserValidationError } from '../../../domain/user/errors/UserValidationError';
 import { UserDomainError } from '../../../domain/user/errors/UserDomainError';
 import { UserDTO } from '../dto/UserDTO';
@@ -60,7 +60,7 @@ describe('RegisterUserUseCase', () => {
   test('既に登録済みのメールアドレスの場合はエラーになる', async () => {
     const name = 'test user';
     const email = 'test@example.com';
-    const existingUser = User.create('existing user', email);
+    const existingUser = createUser('existing user', email);
     mockUserRepository.findByEmail.mockImplementation(async () => existingUser);
 
     await expect(useCase.execute(name, email)).rejects.toThrow(UserDomainError);
