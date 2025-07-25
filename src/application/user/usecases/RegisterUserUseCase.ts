@@ -2,13 +2,13 @@ import { createUser, getUserName, getUserEmail } from '@/domain/user/User';
 import { IUserRepository } from '@/domain/user/IUserRepository';
 import { UserDTO } from '../dto/UserDTO';
 import { UserDomainError } from '@/domain/user/errors/UserDomainError';
-import { Email } from '@/domain/shared/Email';
+import { createEmail, Email } from '@/domain/shared/Email';
 
 export class RegisterUserUseCase {
   constructor(private readonly userRepository: IUserRepository) {}
 
   async execute(name: string, email: string): Promise<UserDTO> {
-    const emailVO = Email.create(email);
+    const emailVO = createEmail(email);
     const existingUser = await this.userRepository.findByEmail(emailVO);
     if (existingUser) {
       throw UserDomainError.alreadyExists(email);

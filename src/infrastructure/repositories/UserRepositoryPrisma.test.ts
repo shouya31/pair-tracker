@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { UserRepositoryPrisma } from './UserRepositoryPrisma';
 import { User } from '../../domain/user/User';
-import { Email } from '../../domain/shared/Email';
+import { createEmail, Email } from '../../domain/shared/Email';
 import { UserStatus } from '../../domain/user/enums/UserStatus';
 import { createUser, rebuildUser, getUserId, getUserName, getUserEmail } from '../../domain/user/User';
 
@@ -67,7 +67,7 @@ describe('UserRepositoryPrisma', () => {
       const user = createUser('テストユーザー', 'test@example.com');
       await repository.save(user);
 
-      const foundUser = await repository.findByEmail(Email.create('test@example.com'));
+      const foundUser = await repository.findByEmail(createEmail('test@example.com'));
 
       expect(foundUser).not.toBeNull();
       expect(getUserName(foundUser!)).toBe('テストユーザー');
@@ -75,7 +75,7 @@ describe('UserRepositoryPrisma', () => {
     });
 
     test('存在しないメールアドレスの場合はnullを返す', async () => {
-      const foundUser = await repository.findByEmail(Email.create('nonexistent@example.com'));
+      const foundUser = await repository.findByEmail(createEmail('nonexistent@example.com'));
 
       expect(foundUser).toBeNull();
     });

@@ -1,5 +1,5 @@
 import { UserStatus } from './enums/UserStatus';
-import { Email } from '../shared/Email';
+import { Email, createEmail } from '../shared/Email';
 import { randomUUID } from 'crypto';
 import { UserValidationError } from './errors/UserValidationError';
 
@@ -17,7 +17,7 @@ export function createUser(name: string, email: string): User {
   return {
     userId: randomUUID(),
     name,
-    email: Email.create(email),
+    email: createEmail(email),
     status: UserStatus.Enrolled,
   };
 }
@@ -26,7 +26,7 @@ export function rebuildUser(id: string, name: string, email: string, status: Use
   return {
     userId: id,
     name,
-    email: Email.create(email),
+    email: createEmail(email),
     status,
   };
 }
@@ -40,7 +40,7 @@ export function getUserName(user: User): string {
 }
 
 export function getUserEmail(user: User): string {
-  return user.email.getValue();
+  return user.email.value;
 }
 
 export function getUserEmailVO(user: User): Email {
