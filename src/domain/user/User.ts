@@ -1,5 +1,5 @@
 import { UserStatus } from './enums/UserStatus';
-import { Email, createEmail } from '../shared/Email';
+import { Email } from '../shared/Email';
 import { randomUUID } from 'crypto';
 import { UserValidationError } from './errors/UserValidationError';
 
@@ -10,23 +10,23 @@ export type User = {
   status: UserStatus;
 };
 
-export function createUser(name: string, email: string): User {
+export function createUser(name: string, email: Email): User {
   if (!name.trim()) {
     throw UserValidationError.nameRequired();
   }
   return {
     userId: randomUUID(),
     name,
-    email: createEmail(email),
+    email,
     status: UserStatus.Enrolled,
   };
 }
 
-export function rebuildUser(id: string, name: string, email: string, status: UserStatus): User {
+export function rebuildUser(id: string, name: string, email: Email, status: UserStatus): User {
   return {
     userId: id,
     name,
-    email: createEmail(email),
+    email,
     status,
   };
 }

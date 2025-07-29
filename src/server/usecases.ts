@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { RegisterUserUseCase } from '@/application/user/usecases/RegisterUserUseCase';
-import { GetUsersUseCase } from '@/application/user/usecases/GetUsersUseCase';
+import { createRegisterUserUseCase } from '@/application/user/usecases/RegisterUserUseCase';
+import { createGetUsersUseCase } from '@/application/user/usecases/GetUsersUseCase';
 import { UserRepositoryPrisma } from '@/infrastructure/repositories/UserRepositoryPrisma';
 import { CreateTeamUseCase } from '@/application/team/usecases/CreateTeamUseCase';
 import { TeamRepositoryPrisma } from '@/infrastructure/repositories/TeamRepositoryPrisma';
@@ -15,7 +15,7 @@ process.on('beforeExit', async () => {
 });
 
 function createRegisterUserUseCaseInstance() {
-  return new RegisterUserUseCase(userRepository);
+  return createRegisterUserUseCase(userRepository);
 }
 
 function createTeamUseCaseInstance() {
@@ -27,7 +27,7 @@ function createGetTeamsUseCaseInstance() {
 }
 
 function createGetUsersUseCaseInstance() {
-  return new GetUsersUseCase(userRepository);
+  return createGetUsersUseCase(userRepository);
 }
 
 // シングルトンインスタンスをエクスポート

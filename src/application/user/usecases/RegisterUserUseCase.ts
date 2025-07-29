@@ -1,25 +1,31 @@
 import { createUser, getUserName, getUserEmail } from '@/domain/user/User';
 import { IUserRepository } from '@/domain/user/IUserRepository';
-import { UserDTO } from '../dto/UserDTO';
-import { UserDomainError } from '@/domain/user/errors/UserDomainError';
-import { createEmail, Email } from '@/domain/shared/Email';
+import { UserRegisterDTO } from '../dto/UserDTO';
+import { userAlreadyExists } from '@/domain/user/errors/UserDomainError';
+import { createEmail } from '@/domain/shared/Email';
 
-export class RegisterUserUseCase {
-  constructor(private readonly userRepository: IUserRepository) {}
+export type RegisterUserUseCase = (
+  name: string,
+  email: string
+) => Promise<UserRegisterDTO>;
 
-  async execute(name: string, email: string): Promise<UserDTO> {
+export const createRegisterUserUseCase = (
+  userRepository: IUserRepository
+): RegisterUserUseCase => {
+  return async (name: string, email: string): Promise<UserRegisterDTO> => {
     const emailVO = createEmail(email);
-    const existingUser = await this.userRepository.findByEmail(emailVO);
+
+    const existingUser = await userRepository.findByEmail(emailVO);
     if (existingUser) {
-      throw UserDomainError.alreadyExists(email);
+      throw userAlreadyExists(email);
     }
 
-    const user = createUser(name, email);
-    await this.userRepository.save(user);
+    const user = createUser(name, emailVO);
+    await userRepository.save(user);
 
-    return new UserDTO(
-      getUserName(user),
-      getUserEmail(user)
-    );
-  }
-}
+    return {
+      name: getUserName(user),
+      email: getUserEmail(user)
+    };
+  };
+};
