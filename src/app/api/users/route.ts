@@ -7,7 +7,7 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
-    const users = await getUsersUseCase.execute();
+    const users = await getUsersUseCase();
     return NextResponse.json({ users });
   } catch (error) {
     const unexpectedError = new UnexpectedError(error instanceof Error ? error : undefined);
@@ -18,4 +18,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-} 
+}

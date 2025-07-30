@@ -1,42 +1,68 @@
 import { UserStatus } from './enums/UserStatus';
-import { Email } from '../shared/Email';
+import { Email, createEmail } from '../shared/Email';
+import { UserName, createUserName } from './values/UserName';
 import { randomUUID } from 'crypto';
-import { UserValidationError } from './errors/UserValidationError';
+import { Result, ok, err, isOk } from '../shared/Result';
+import { DomainError } from '../shared/DomainError';
 
 export type User = {
   userId: string;
-  name: string;
+  name: UserName;
   email: Email;
   status: UserStatus;
 };
 
-export function createUser(name: string, email: Email): User {
-  if (!name.trim()) {
-    throw UserValidationError.nameRequired();
+export function createUser(name: string, email: string): Result<User, DomainError> {
+  const nameResult = createUserName(name);
+  if (!isOk(nameResult)) {
+    return err(nameResult.error);
   }
-  return {
+
+  const emailResult = createEmail(email);
+  if (!isOk(emailResult)) {
+    return err(emailResult.error);
+  }
+
+  return ok({
     userId: randomUUID(),
-    name,
-    email,
+    name: nameResult.value,
+    email: emailResult.value,
     status: UserStatus.Enrolled,
-  };
+  });
 }
 
-export function rebuildUser(id: string, name: string, email: Email, status: UserStatus): User {
-  return {
+export type RebuildUserError = DomainError;
+
+export function rebuildUser(
+  id: string,
+  name: string,
+  email: string,
+  status: UserStatus
+): Result<User, RebuildUserError> {
+  const nameResult = createUserName(name);
+  if (!isOk(nameResult)) {
+    return err(nameResult.error);
+  }
+
+  const emailResult = createEmail(email);
+  if (!isOk(emailResult)) {
+    return err(emailResult.error);
+  }
+
+  return ok({
     userId: id,
-    name,
-    email,
+    name: nameResult.value,
+    email: emailResult.value,
     status,
-  };
+  });
 }
 
 export function getUserId(user: User): string {
   return user.userId;
 }
 
-export function getUserName(user: User): string {
-  return user.name;
+export function getUserNameVO(user: User): string {
+  return user.name.value;
 }
 
 export function getUserEmail(user: User): string {

@@ -1,34 +1,46 @@
-import { UserValidationError } from '../user/errors/UserValidationError';
+import { Result, ok, err } from './Result';
 
 export type Email = {
-  value: string;
+  readonly value: string;
 };
 
-export function createEmail(value: string): Email {
-  if (!isValidEmail(value)) {
-    throw UserValidationError.emailInvalid(value);
+export type EmailError = {
+  message: string;
+};
+
+export const createEmail = (value: string): Result<Email, EmailError> => {
+  if (!isNonEmptyString(value)) {
+    return err({
+      message: 'メールアドレスの入力が必須です'
+    });
   }
-  return { value };
-}
 
-export function getEmailValue(email: Email): string {
-  return email.value;
-}
+  if (!isValidStructure(value)) {
+    return err({
+      message: `無効なメールアドレスの形式です: ${value}`
+    });
+  }
 
-export function equalsEmail(a: Email, b: Email): boolean {
-  return a.value === b.value;
-}
+  const [localPart, domain] = value.split('@');
 
-function isValidEmail(email: string): boolean {
-  if (!isNonEmptyString(email)) return false;
-  if (!isValidStructure(email)) return false;
+  if (!isValidLocalPart(localPart)) {
+    return err({
+      message: `無効なローカルパートです: ${localPart}`
+    });
+  }
 
-  const [localPart, domain] = email.split('@');
-  if (!isValidLocalPart(localPart)) return false;
-  if (!isValidDomain(domain)) return false;
+  if (!isValidDomain(domain)) {
+    return err({
+      message: `無効なドメインです: ${domain}`
+    });
+  }
 
-  return true;
-}
+  return ok({ value });
+};
+
+export const getEmailValue = (email: Email): string => email.value;
+
+export const equalsEmail = (a: Email, b: Email): boolean => a.value === b.value;
 
 function isNonEmptyString(email: string): boolean {
   return !!email && typeof email === 'string';

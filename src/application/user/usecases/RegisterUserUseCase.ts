@@ -1,31 +1,26 @@
-import { createUser, getUserName, getUserEmail } from '@/domain/user/User';
-import { IUserRepository } from '@/domain/user/IUserRepository';
-import { UserRegisterDTO } from '../dto/UserDTO';
-import { userAlreadyExists } from '@/domain/user/errors/UserDomainError';
-import { createEmail } from '@/domain/shared/Email';
+import { Result, isOk } from '../../../domain/shared/Result';
+import { User } from '../../../domain/user/User';
+import { UserRepository } from '../../../domain/user/UserRepository';
+import { createUserService } from '../../../domain/user/UserDomainService';
+import { DomainError } from '../../../domain/shared/DomainError';
 
-export type RegisterUserUseCase = (
-  name: string,
-  email: string
-) => Promise<UserRegisterDTO>;
+export class RegisterUserUseCase {
+  constructor(private readonly userRepository: UserRepository) {}
 
-export const createRegisterUserUseCase = (
-  userRepository: IUserRepository
-): RegisterUserUseCase => {
-  return async (name: string, email: string): Promise<UserRegisterDTO> => {
-    const emailVO = createEmail(email);
-
-    const existingUser = await userRepository.findByEmail(emailVO);
-    if (existingUser) {
-      throw userAlreadyExists(email);
+  async execute(
+    name: string,
+    email: string
+  ): Promise<Result<User, DomainError>> {
+    const userResult = await createUserService(name, email, this.userRepository);
+    if (!isOk(userResult)) {
+      return userResult;
     }
 
-    const user = createUser(name, emailVO);
-    await userRepository.save(user);
+    const saveResult = await this.userRepository.save(userResult.value);
+    if (!isOk(saveResult)) {
+      return saveResult;
+    }
 
-    return {
-      name: getUserName(user),
-      email: getUserEmail(user)
-    };
-  };
-};
+    return saveResult;
+  }
+}

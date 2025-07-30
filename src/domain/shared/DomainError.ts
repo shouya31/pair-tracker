@@ -2,6 +2,6 @@ export type DomainError = {
   message: string;
 };
 
-export function createDomainError(message: string): DomainError {
-  return { message };
-}
+export const createDomainError = (message: string): DomainError => ({
+  message,
+});
