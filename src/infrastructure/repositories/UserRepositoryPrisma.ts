@@ -4,7 +4,7 @@ import { User } from '../../domain/user/User';
 import { Email } from '../../domain/shared/Email';
 import { UserStatus } from '../../domain/user/enums/UserStatus';
 import { rebuildUser, getUserId, getUserNameVO, getUserEmail, getUserStatus } from '../../domain/user/User';
-import { Result, ok, err, isOk } from '../../domain/shared/Result';
+import { Result, ok, err, isOk, isErr } from '../../domain/shared/Result';
 import { DomainError, createDomainError } from '../../domain/shared/DomainError';
 
 export class UserRepositoryPrisma implements IUserRepository {
@@ -28,7 +28,7 @@ export class UserRepositoryPrisma implements IUserRepository {
       user.status as UserStatus
     );
 
-    if (!isOk(rebuildResult)) {
+    if (isErr(rebuildResult)) {
       return null;
     }
 
@@ -51,7 +51,7 @@ export class UserRepositoryPrisma implements IUserRepository {
       user.status as UserStatus
     );
 
-    if (!isOk(rebuildResult)) {
+    if (isErr(rebuildResult)) {
       return null;
     }
 

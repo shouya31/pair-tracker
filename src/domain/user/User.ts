@@ -2,7 +2,7 @@ import { UserStatus } from './enums/UserStatus';
 import { Email, createEmail } from '../shared/Email';
 import { UserName, createUserName } from './values/UserName';
 import { randomUUID } from 'crypto';
-import { Result, ok, err, isOk } from '../shared/Result';
+import { Result, ok, err, isOk, isErr } from '../shared/Result';
 import { DomainError } from '../shared/DomainError';
 
 export type User = {
@@ -14,12 +14,12 @@ export type User = {
 
 export function createUser(name: string, email: string): Result<User, DomainError> {
   const nameResult = createUserName(name);
-  if (!isOk(nameResult)) {
+  if (isErr(nameResult)) {
     return err(nameResult.error);
   }
 
   const emailResult = createEmail(email);
-  if (!isOk(emailResult)) {
+  if (isErr(emailResult)) {
     return err(emailResult.error);
   }
 
@@ -40,12 +40,12 @@ export function rebuildUser(
   status: UserStatus
 ): Result<User, RebuildUserError> {
   const nameResult = createUserName(name);
-  if (!isOk(nameResult)) {
+  if (isErr(nameResult)) {
     return err(nameResult.error);
   }
 
   const emailResult = createEmail(email);
-  if (!isOk(emailResult)) {
+  if (isErr(emailResult)) {
     return err(emailResult.error);
   }
 

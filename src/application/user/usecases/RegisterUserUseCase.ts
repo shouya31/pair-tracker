@@ -1,4 +1,4 @@
-import { Result, isOk } from '../../../domain/shared/Result';
+import { Result, isOk, isErr } from '../../../domain/shared/Result';
 import { User } from '../../../domain/user/User';
 import { IUserRepository } from '../../../domain/user/IUserRepository';
 import { createUserService } from '../../../domain/user/UserDomainService';
@@ -10,12 +10,12 @@ export async function RegisterUserUseCase(
   userRepository: IUserRepository
 ): Promise<Result<User, DomainError>> {
   const userResult = await createUserService(name, email, userRepository);
-  if (!isOk(userResult)) {
+  if (isErr(userResult)) {
     return userResult;
   }
 
   const saveResult = await userRepository.save(userResult.value);
-  if (!isOk(saveResult)) {
+  if (isErr(saveResult)) {
     return saveResult;
   }
 

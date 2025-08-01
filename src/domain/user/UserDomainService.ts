@@ -1,4 +1,4 @@
-import { Result, ok, err, isOk } from '../shared/Result';
+import { Result, ok, err, isOk, isErr } from '../shared/Result';
 import { User, createUser } from './User';
 import { IUserRepository } from './IUserRepository';
 import { DomainError, createDomainError, ERROR_CODES } from '../shared/DomainError';
@@ -11,17 +11,17 @@ export async function createUserService(
   userRepository: IUserRepository
 ): Promise<Result<User, DomainError>> {
   const emailResult = createEmail(email);
-  if (!isOk(emailResult)) {
+  if (isErr(emailResult)) {
     return err(emailResult.error);
   }
 
   const duplicateCheckResult = await checkEmailDuplicate(emailResult.value, userRepository);
-  if (!isOk(duplicateCheckResult)) {
+  if (isErr(duplicateCheckResult)) {
     return duplicateCheckResult;
   }
 
   const userResult = createUser(name, email);
-  if (!isOk(userResult)) {
+  if (isErr(userResult)) {
     return err(userResult.error);
   }
 

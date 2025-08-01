@@ -3,7 +3,7 @@ import { ZodError } from 'zod';
 import { registerUserSchema } from '@/lib/schemas/user-schema';
 import type { UserResponse } from '@/presentation/types/responses/UserResponse';
 import { registerUserUseCase } from '@/server/usecases';
-import { isOk } from '@/domain/shared/Result';
+import { isOk, isErr } from '@/domain/shared/Result';
 import { getUserNameVO, getUserEmail } from '@/domain/user/User';
 import { ERROR_CODES } from '@/domain/shared/DomainError';
 
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     const validatedData = registerUserSchema.parse(body);
     const registeredUserResult = await registerUserUseCase(validatedData.name, validatedData.email);
 
-    if (!isOk(registeredUserResult)) {
+    if (isErr(registeredUserResult)) {
       const status = getHttpStatusFromErrorCode(registeredUserResult.error.code);
       return NextResponse.json(
         { error: registeredUserResult.error.message },
