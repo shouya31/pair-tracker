@@ -1,26 +1,23 @@
 import { Result, isOk } from '../../../domain/shared/Result';
 import { User } from '../../../domain/user/User';
-import { UserRepository } from '../../../domain/user/UserRepository';
+import { IUserRepository } from '../../../domain/user/IUserRepository';
 import { createUserService } from '../../../domain/user/UserDomainService';
 import { DomainError } from '../../../domain/shared/DomainError';
 
-export class RegisterUserUseCase {
-  constructor(private readonly userRepository: UserRepository) {}
+export async function RegisterUserUseCase(
+  name: string,
+  email: string,
+  userRepository: IUserRepository
+): Promise<Result<User, DomainError>> {
+  const userResult = await createUserService(name, email, userRepository);
+  if (!isOk(userResult)) {
+    return userResult;
+  }
 
-  async execute(
-    name: string,
-    email: string
-  ): Promise<Result<User, DomainError>> {
-    const userResult = await createUserService(name, email, this.userRepository);
-    if (!isOk(userResult)) {
-      return userResult;
-    }
-
-    const saveResult = await this.userRepository.save(userResult.value);
-    if (!isOk(saveResult)) {
-      return saveResult;
-    }
-
+  const saveResult = await userRepository.save(userResult.value);
+  if (!isOk(saveResult)) {
     return saveResult;
   }
+
+  return userResult;
 }

@@ -1,8 +1,9 @@
 import { Result, ok, err, isOk } from '../shared/Result';
 import { User, createUser } from './User';
 import { IUserRepository } from './IUserRepository';
-import { DomainError, createDomainError } from '../shared/DomainError';
+import { DomainError, createDomainError, ERROR_CODES } from '../shared/DomainError';
 import { createEmail } from '../shared/Email';
+import { Email } from '../shared/Email';
 
 export async function createUserService(
   name: string,
@@ -14,9 +15,9 @@ export async function createUserService(
     return err(emailResult.error);
   }
 
-  const existingUser = await userRepository.findByEmail(emailResult.value);
-  if (existingUser !== null) {
-    return err(createDomainError(`メールアドレス ${email} は既に使用されています`));
+  const duplicateCheckResult = await checkEmailDuplicate(emailResult.value, userRepository);
+  if (!isOk(duplicateCheckResult)) {
+    return duplicateCheckResult;
   }
 
   const userResult = createUser(name, email);
@@ -25,4 +26,22 @@ export async function createUserService(
   }
 
   return ok(userResult.value);
+}
+
+/**
+ * メールアドレスの重複チェックを行うドメイン関数
+ * ビジネスルール：同じメールアドレスで複数のユーザーを作成してはいけない
+ */
+export async function checkEmailDuplicate(
+  email: Email,
+  userRepository: IUserRepository
+): Promise<Result<void, DomainError>> {
+  const existingUser = await userRepository.findByEmail(email);
+  if (existingUser !== null) {
+    return err(createDomainError(
+      `メールアドレス ${email.value} は既に使用されています`,
+      ERROR_CODES.ALREADY_EXISTS
+    ));
+  }
+  return ok(undefined);
 }

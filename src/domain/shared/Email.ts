@@ -1,38 +1,29 @@
 import { Result, ok, err } from './Result';
+import { DomainError, createDomainError, ERROR_CODES } from './DomainError';
 
 export type Email = {
   readonly value: string;
 };
 
-export type EmailError = {
-  message: string;
-};
+export type EmailError = DomainError;
 
 export const createEmail = (value: string): Result<Email, EmailError> => {
   if (!isNonEmptyString(value)) {
-    return err({
-      message: 'メールアドレスの入力が必須です'
-    });
+    return err(createDomainError('メールアドレスの入力が必須です', ERROR_CODES.VALIDATION_ERROR));
   }
 
   if (!isValidStructure(value)) {
-    return err({
-      message: `無効なメールアドレスの形式です: ${value}`
-    });
+    return err(createDomainError(`無効なメールアドレスの形式です: ${value}`, ERROR_CODES.VALIDATION_ERROR));
   }
 
   const [localPart, domain] = value.split('@');
 
   if (!isValidLocalPart(localPart)) {
-    return err({
-      message: `無効なローカルパートです: ${localPart}`
-    });
+    return err(createDomainError(`無効なローカルパートです: ${localPart}`, ERROR_CODES.VALIDATION_ERROR));
   }
 
   if (!isValidDomain(domain)) {
-    return err({
-      message: `無効なドメインです: ${domain}`
-    });
+    return err(createDomainError(`無効なドメインです: ${domain}`, ERROR_CODES.VALIDATION_ERROR));
   }
 
   return ok({ value });

@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { createRegisterUserUseCase } from '@/application/user/usecases/RegisterUserUseCase';
+import { RegisterUserUseCase } from '@/application/user/usecases/RegisterUserUseCase';
 import { createGetUsersUseCase } from '@/application/user/usecases/GetUsersUseCase';
 import { UserRepositoryPrisma } from '@/infrastructure/repositories/UserRepositoryPrisma';
 import { CreateTeamUseCase } from '@/application/team/usecases/CreateTeamUseCase';
@@ -15,7 +15,7 @@ process.on('beforeExit', async () => {
 });
 
 function createRegisterUserUseCaseInstance() {
-  return createRegisterUserUseCase(userRepository);
+  return (name: string, email: string) => RegisterUserUseCase(name, email, userRepository);
 }
 
 function createTeamUseCaseInstance() {
