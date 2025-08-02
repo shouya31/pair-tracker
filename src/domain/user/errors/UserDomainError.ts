@@ -1,30 +1,21 @@
-import { DomainError } from '../../shared/DomainError';
+import { DomainError, createDomainError } from '../../shared/DomainError';
 
-export type UserDomainErrorType = 'ALREADY_EXISTS' | 'NOT_FOUND';
+export function userAlreadyExists(email: string): DomainError {
+  return createDomainError(`このメールアドレスは既に使用されています: ${email}`);
+}
 
-export class UserDomainError extends DomainError {
-  constructor(
-    message: string,
-    private readonly _type: UserDomainErrorType
-  ) {
-    super(message);
-  }
+export function userNotFound(id: string): DomainError {
+  return createDomainError(`指定されたユーザーが見つかりません: ${id}`);
+}
 
-  get type(): UserDomainErrorType {
-    return this._type;
-  }
+export function emailInvalidFormat(email: string): DomainError {
+  return createDomainError(`無効なメールアドレス形式です: ${email}`);
+}
 
-  static alreadyExists(email: string): UserDomainError {
-    return new UserDomainError(
-      `このメールアドレスは既に使用されています: ${email}`,
-      'ALREADY_EXISTS'
-    );
-  }
+export function userNameERequiredrror(): DomainError {
+  return createDomainError('名前は必須です');
+}
 
-  static notFound(id: string): UserDomainError {
-    return new UserDomainError(
-      `指定されたユーザーが見つかりません: ${id}`,
-      'NOT_FOUND'
-    );
-  }
+export function emailRequiredError(): DomainError {
+  return createDomainError('メールアドレスは必須です');
 }

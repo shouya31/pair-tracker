@@ -1,52 +1,67 @@
-import { UserValidationError } from '../user/errors/UserValidationError';
+import { Result, ok, err } from './Result';
+import { DomainError, createDomainError, ERROR_CODES } from './DomainError';
 
 export type Email = {
-  value: string;
+  readonly value: string;
 };
 
-export function createEmail(value: string): Email {
-  if (!isValidEmail(value)) {
-    throw UserValidationError.emailInvalid(value);
+export type EmailError = DomainError;
+
+export const createEmail = (value: string): Result<Email, EmailError> => {
+  if (!isNonEmptyString(value)) {
+    return err(createDomainError('メールアドレスの入力が必須です', ERROR_CODES.VALIDATION_ERROR));
   }
-  return { value };
+
+  if (!isValidStructure(value)) {
+    return err(createDomainError(`無効なメールアドレスの形式です: ${value}`, ERROR_CODES.VALIDATION_ERROR));
+  }
+
+  const [localPart, domain] = value.split('@');
+
+  if (!isValidLocalPart(localPart)) {
+    return err(createDomainError(`無効なローカルパートです: ${localPart}`, ERROR_CODES.VALIDATION_ERROR));
+  }
+
+  if (!isValidDomain(domain)) {
+    return err(createDomainError(`無効なドメインです: ${domain}`, ERROR_CODES.VALIDATION_ERROR));
+  }
+
+  return ok({ value });
+};
+
+export const getEmailValue = (email: Email): string => email.value;
+
+export const equalsEmail = (a: Email, b: Email): boolean => a.value === b.value;
+
+function isNonEmptyString(email: string): boolean {
+  return !!email && typeof email === 'string';
 }
 
-export function getEmailValue(email: Email): string {
-  return email.value;
-}
-
-function isValidEmail(email: string): boolean {
-  if (!email || typeof email !== 'string') return false;
-
-  // RFC 5321で定義されている最大長のチェック
+function isValidStructure(email: string): boolean {
   const parts = email.split('@');
   if (parts.length !== 2) return false;
-
   const [localPart, domain] = parts;
-  if (localPart.length > 64) return false;  // ローカル部は64文字まで
-  if (domain.length > 255) return false;    // ドメイン部は255文字まで
-  if (email.length > 254) return false;     // 全体で254文字まで
+  if (localPart.length > 64) return false;
+  if (domain.length > 255) return false;
+  if (email.length > 254) return false;
+  return true;
+}
 
-  // ローカル部のチェック
+function isValidLocalPart(localPart: string): boolean {
   if (!/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+$/.test(localPart)) return false;
-  if (/\.{2,}/.test(localPart)) return false;  // 連続したドットは不可
+  if (/\.{2,}/.test(localPart)) return false;
   if (localPart.startsWith('.') || localPart.endsWith('.')) return false;
+  return true;
+}
 
-  // ドメイン部のチェック
+function isValidDomain(domain: string): boolean {
   const domainParts = domain.split('.');
-  if (domainParts.length < 2) return false;  // 少なくとも1つのドットが必要
-  if (domain.includes('..')) return false;   // 連続したドットは不可
+  if (domainParts.length < 2) return false;
+  if (domain.includes('..')) return false;
   if (domain.startsWith('-') || domain.endsWith('-')) return false;
-
-  // 各ドメインパートのチェック
   for (const part of domainParts) {
     if (part.length === 0) return false;
     if (!/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/.test(part)) return false;
   }
-
   return true;
-}
-
-export function equalsEmail(a: Email, b: Email): boolean {
-  return a.value === b.value;
 }

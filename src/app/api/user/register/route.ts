@@ -1,26 +1,43 @@
 import { NextResponse } from 'next/server';
-import { UserDomainError } from '@/domain/user/errors/UserDomainError';
-import { UserValidationError } from '@/domain/user/errors/UserValidationError';
-import { UnexpectedError } from '@/domain/shared/errors/SystemError';
 import { ZodError } from 'zod';
 import { registerUserSchema } from '@/lib/schemas/user-schema';
-import { registerUserUseCase } from '@/server/usecases';
 import type { UserResponse } from '@/presentation/types/responses/UserResponse';
+import { registerUserUseCase } from '@/server/usecases';
+import { isErr } from '@/domain/shared/Result';
+import { getUserNameVO, getUserEmail } from '@/domain/user/User';
+import { ERROR_CODES } from '@/domain/shared/DomainError';
+
+function getHttpStatusFromErrorCode(code: string): number {
+  switch (code) {
+    case ERROR_CODES.ALREADY_EXISTS:
+      return 409;
+    case ERROR_CODES.NOT_FOUND:
+      return 404;
+    case ERROR_CODES.VALIDATION_ERROR:
+      return 400;
+    case ERROR_CODES.SYSTEM_ERROR:
+    default:
+      return 500;
+  }
+}
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    console.log('Received registration request:', body);
-
     const validatedData = registerUserSchema.parse(body);
-    console.log('Validated data:', validatedData);
+    const registeredUserResult = await registerUserUseCase(validatedData.name, validatedData.email);
 
-    const registeredUser = await registerUserUseCase.execute(validatedData.name, validatedData.email);
-    console.log('User registered successfully:', registeredUser);
+    if (isErr(registeredUserResult)) {
+      const status = getHttpStatusFromErrorCode(registeredUserResult.error.code);
+      return NextResponse.json(
+        { error: registeredUserResult.error.message },
+        { status }
+      );
+    }
 
     const userResponse: UserResponse = {
-      name: registeredUser.name,
-      email: registeredUser.email
+      name: getUserNameVO(registeredUserResult.value),
+      email: getUserEmail(registeredUserResult.value)
     };
 
     return NextResponse.json(
@@ -32,8 +49,6 @@ export async function POST(request: Request) {
     );
 
   } catch (error) {
-    console.error('Error in user registration:', error);
-
     if (error instanceof ZodError) {
       const firstError = error.errors[0];
       return NextResponse.json(
@@ -46,32 +61,8 @@ export async function POST(request: Request) {
       );
     }
 
-    if (error instanceof UserValidationError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      );
-    }
-
-    if (error instanceof UserDomainError) {
-      switch (error.type) {
-        case 'ALREADY_EXISTS':
-          return NextResponse.json(
-            { error: error.message },
-            { status: 409 }
-          );
-        case 'NOT_FOUND':
-          return NextResponse.json(
-            { error: error.message },
-            { status: 404 }
-          );
-      }
-    }
-
-    const unexpectedError = new UnexpectedError(error instanceof Error ? error : undefined);
-    console.error('Unexpected error details:', error);
     return NextResponse.json(
-      { error: unexpectedError.message },
+      { error: `ユーザー登録中にエラーが発生しました: ${error}` },
       { status: 500 }
     );
   }

@@ -1,22 +1,20 @@
 import { NextRequest } from 'next/server';
 import { POST } from './route';
-import { UserDTO } from '@/application/user/dto/UserDTO';
-import { UserDomainError } from '@/domain/user/errors/UserDomainError';
 import { registerUserUseCase } from '@/server/usecases';
+import { Result, ok, err } from '@/domain/shared/Result';
+import { User } from '@/domain/user/User';
+import { DomainError, ERROR_CODES } from '@/domain/shared/DomainError';
+import { createUser, getUserNameVO, getUserEmail } from '@/domain/user/User';
 
 jest.mock('@/server/usecases', () => ({
-  registerUserUseCase: {
-    execute: jest.fn()
-  }
+  registerUserUseCase: jest.fn()
 }));
 
 describe('ユーザー登録API', () => {
-  const mockUser = new UserDTO('テストユーザー', 'test@example.com');
-  const mockExecute = jest.fn().mockResolvedValue(mockUser);
+  const mockRegisterUserUseCase = registerUserUseCase as jest.MockedFunction<typeof registerUserUseCase>;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (registerUserUseCase.execute as jest.Mock) = mockExecute;
   });
 
   describe('正常系', () => {
@@ -25,6 +23,12 @@ describe('ユーザー登録API', () => {
         name: 'テストユーザー',
         email: 'test@example.com'
       };
+
+      // 成功時のユーザーを作成
+      const userResult = createUser(requestBody.name, requestBody.email);
+      if (userResult._tag === 'Ok') {
+        mockRegisterUserUseCase.mockResolvedValue(ok(userResult.value));
+      }
 
       const request = new NextRequest('http://localhost:3000/api/user/register', {
         method: 'POST',
@@ -37,10 +41,13 @@ describe('ユーザー登録API', () => {
       const responseBody = await response.json();
       expect(responseBody).toEqual({
         message: 'ユーザーが正常に登録されました',
-        user: mockUser
+        user: {
+          name: requestBody.name,
+          email: requestBody.email
+        }
       });
 
-      expect(mockExecute).toHaveBeenCalledWith(
+      expect(mockRegisterUserUseCase).toHaveBeenCalledWith(
         requestBody.name,
         requestBody.email
       );
@@ -92,13 +99,39 @@ describe('ユーザー登録API', () => {
       });
     });
 
+    test('メールアドレスの形式が無効な場合、400エラーが返される', async () => {
+      const requestBody = {
+        name: 'テストユーザー',
+        email: 'invalid-email'
+      };
+
+      const request = new NextRequest('http://localhost:3000/api/user/register', {
+        method: 'POST',
+        body: JSON.stringify(requestBody)
+      });
+
+      const response = await POST(request);
+      expect(response.status).toBe(400);
+
+      const responseBody = await response.json();
+      expect(responseBody).toEqual({
+        error: 'メールアドレスの形式が正しくありません',
+        field: 'email',
+        value: 'email'
+      });
+    });
+
     test('メールアドレスが既に存在する場合、409エラーが返される', async () => {
       const requestBody = {
         name: 'テストユーザー',
         email: 'existing@example.com'
       };
 
-      mockExecute.mockRejectedValueOnce(UserDomainError.alreadyExists(requestBody.email));
+      const alreadyExistsError: DomainError = {
+        message: `このメールアドレスは既に使用されています: ${requestBody.email}`,
+        code: ERROR_CODES.ALREADY_EXISTS
+      };
+      mockRegisterUserUseCase.mockResolvedValue(err(alreadyExistsError));
 
       const request = new NextRequest('http://localhost:3000/api/user/register', {
         method: 'POST',
@@ -114,13 +147,43 @@ describe('ユーザー登録API', () => {
       });
     });
 
-    test('予期せぬエラーが発生した場合、500エラーが返される', async () => {
+    test('ユーザー名が空の場合、400エラーが返される', async () => {
       const requestBody = {
         name: 'テストユーザー',
         email: 'test@example.com'
       };
 
-      mockExecute.mockRejectedValueOnce(new Error('データベース接続エラー'));
+      const validationError: DomainError = {
+        message: 'ユーザー名の入力が必須です',
+        code: ERROR_CODES.VALIDATION_ERROR
+      };
+      mockRegisterUserUseCase.mockResolvedValue(err(validationError));
+
+      const request = new NextRequest('http://localhost:3000/api/user/register', {
+        method: 'POST',
+        body: JSON.stringify(requestBody)
+      });
+
+      const response = await POST(request);
+      expect(response.status).toBe(400);
+
+      const responseBody = await response.json();
+      expect(responseBody).toEqual({
+        error: 'ユーザー名の入力が必須です'
+      });
+    });
+
+    test('システムエラーの場合、500エラーが返される', async () => {
+      const requestBody = {
+        name: 'テストユーザー',
+        email: 'test@example.com'
+      };
+
+      const systemError: DomainError = {
+        message: 'データベースエラー',
+        code: ERROR_CODES.SYSTEM_ERROR
+      };
+      mockRegisterUserUseCase.mockResolvedValue(err(systemError));
 
       const request = new NextRequest('http://localhost:3000/api/user/register', {
         method: 'POST',
@@ -132,8 +195,30 @@ describe('ユーザー登録API', () => {
 
       const responseBody = await response.json();
       expect(responseBody).toEqual({
-        error: '予期せぬエラーが発生しました'
+        error: 'データベースエラー'
+      });
+    });
+
+    test('予期せぬエラーが発生した場合、500エラーが返される', async () => {
+      const requestBody = {
+        name: 'テストユーザー',
+        email: 'test@example.com'
+      };
+
+      mockRegisterUserUseCase.mockRejectedValue(new Error('データベース接続エラー'));
+
+      const request = new NextRequest('http://localhost:3000/api/user/register', {
+        method: 'POST',
+        body: JSON.stringify(requestBody)
+      });
+
+      const response = await POST(request);
+      expect(response.status).toBe(500);
+
+      const responseBody = await response.json();
+      expect(responseBody).toEqual({
+        error: 'ユーザー登録中にエラーが発生しました: Error: データベース接続エラー'
       });
     });
   });
-}); 
+});
