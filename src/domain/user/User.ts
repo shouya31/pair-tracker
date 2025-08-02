@@ -39,6 +39,7 @@ export function rebuildUser(
   email: string,
   status: UserStatus
 ): Result<User, RebuildUserError> {
+  // TODO：nameとemail両方ともエラーの場合は、どちらのエラーを返したい
   const nameResult = createUserName(name);
   if (isErr(nameResult)) {
     return err(nameResult.error);
