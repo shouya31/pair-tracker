@@ -3,7 +3,7 @@ import { ZodError } from 'zod';
 import { registerUserSchema } from '@/lib/schemas/user-schema';
 import type { UserResponse } from '@/presentation/types/responses/UserResponse';
 import { registerUserUseCase } from '@/server/usecases';
-import { isOk, isErr } from '@/domain/shared/Result';
+import { isErr } from '@/domain/shared/Result';
 import { getUserNameVO, getUserEmail } from '@/domain/user/User';
 import { ERROR_CODES } from '@/domain/shared/DomainError';
 
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { error: 'ユーザー登録中にエラーが発生しました' },
+      { error: `ユーザー登録中にエラーが発生しました: ${error}` },
       { status: 500 }
     );
   }
