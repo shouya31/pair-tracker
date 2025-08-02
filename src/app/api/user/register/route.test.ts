@@ -1,10 +1,9 @@
 import { NextRequest } from 'next/server';
 import { POST } from './route';
 import { registerUserUseCase } from '@/server/usecases';
-import { userAlreadyExists } from '@/domain/user/errors/UserDomainError';
 import { Result, ok, err } from '@/domain/shared/Result';
 import { User } from '@/domain/user/User';
-import { DomainError } from '@/domain/shared/DomainError';
+import { DomainError, ERROR_CODES } from '@/domain/shared/DomainError';
 import { createUser, getUserNameVO, getUserEmail } from '@/domain/user/User';
 
 jest.mock('@/server/usecases', () => ({
@@ -128,7 +127,11 @@ describe('ユーザー登録API', () => {
         email: 'existing@example.com'
       };
 
-      mockRegisterUserUseCase.mockResolvedValue(err(userAlreadyExists(requestBody.email)));
+      const alreadyExistsError: DomainError = {
+        message: `このメールアドレスは既に使用されています: ${requestBody.email}`,
+        code: ERROR_CODES.ALREADY_EXISTS
+      };
+      mockRegisterUserUseCase.mockResolvedValue(err(alreadyExistsError));
 
       const request = new NextRequest('http://localhost:3000/api/user/register', {
         method: 'POST',
@@ -152,7 +155,7 @@ describe('ユーザー登録API', () => {
 
       const validationError: DomainError = {
         message: 'ユーザー名の入力が必須です',
-        code: 'VALIDATION_ERROR'
+        code: ERROR_CODES.VALIDATION_ERROR
       };
       mockRegisterUserUseCase.mockResolvedValue(err(validationError));
 
@@ -178,7 +181,7 @@ describe('ユーザー登録API', () => {
 
       const systemError: DomainError = {
         message: 'データベースエラー',
-        code: 'SYSTEM_ERROR'
+        code: ERROR_CODES.SYSTEM_ERROR
       };
       mockRegisterUserUseCase.mockResolvedValue(err(systemError));
 
